@@ -1,0 +1,139 @@
+{
+  "app_id": "demo-qa-app",
+  "page_name": "checkbox",
+  "elements": {
+    "home_checkbox_icon": {
+      "id": "9441d770-7c2e-4793-9617-c35c3a91ef0d",
+      "app_id": "demo-qa-app",
+      "page_name": "checkbox",
+      "element_name": "home_checkbox_icon",
+      "field_type": "checkbox",
+      "last_good_locator": {
+        "kind": "xpath",
+        "value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
+        "options": {},
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-checkbox:nth-of-type(1)",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "span",
+        "stable_attrs": {},
+        "short_text": "",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "xpath",
+          "value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
+          "options": {},
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "span",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//span",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/ol[1]/li[1]/span[1]/label[1]/span[1]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-checkbox:nth-of-type(1)",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.46,
+        "similarity_score": 0.35,
+        "overall_score": 0.654,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated_proxy_checkbox",
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "xpath",
+        "locator_value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:44.716225+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:28:55.418460+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:29:40.337357+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:41:34.396452+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:34.343395+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    }
+  }
+}

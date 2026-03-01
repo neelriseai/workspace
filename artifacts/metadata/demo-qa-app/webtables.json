@@ -1,0 +1,387 @@
+{
+  "app_id": "demo-qa-app",
+  "page_name": "webtables",
+  "elements": {
+    "row1_first_name": {
+      "id": "6fa50240-1941-4921-8984-77362debe3ca",
+      "app_id": "demo-qa-app",
+      "page_name": "webtables",
+      "element_name": "row1_first_name",
+      "field_type": "text",
+      "last_good_locator": {
+        "kind": "text",
+        "value": "Cierra",
+        "options": {
+          "exact": true,
+          "nth": 0
+        },
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "div.col-12.mt-4:nth-of-type(2) > div.web-tables-wrapper:nth-of-type(2) > div.ReactTable.-striped:nth-of-type(3) > div.rt-table:nth-of-type(1) > div.rt-tbody:nth-of-type(2) > div.rt-tr-group:nth-of-type(1) > div.rt-tr.-odd:nth-of-type(1) > div.rt-td:nth-of-type(1)",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "div",
+        "stable_attrs": {
+          "role": "gridcell"
+        },
+        "short_text": "cierra",
+        "container_path": [
+          "role:row",
+          "role:rowgroup",
+          "role:grid"
+        ],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "text",
+          "value": "Cierra",
+          "options": {
+            "exact": true,
+            "nth": 0
+          },
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "role",
+          "value": "gridcell",
+          "options": {
+            "name": "cierra",
+            "exact": false
+          },
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//*[@role='gridcell' and contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'cierra')]",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[3]/div[1]/div[2]/div[1]/div[1]/div[1]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "div.col-12.mt-4:nth-of-type(2) > div.web-tables-wrapper:nth-of-type(2) > div.ReactTable.-striped:nth-of-type(3) > div.rt-table:nth-of-type(1) > div.rt-tbody:nth-of-type(2) > div.rt-tr-group:nth-of-type(1) > div.rt-tr.-odd:nth-of-type(1) > div.rt-td:nth-of-type(1)",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.65,
+        "similarity_score": 1.0,
+        "overall_score": 0.86,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "text",
+        "locator_value": "Cierra",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:50.006694+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:29:00.633805+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:29:45.840897+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:41:39.269456+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:39.210078+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    },
+    "row1_last_name_veha": {
+      "id": "43ac9510-982e-48e9-be19-c2aa1a458089",
+      "app_id": "demo-qa-app",
+      "page_name": "webtables",
+      "element_name": "row1_last_name_veha",
+      "field_type": "text",
+      "last_good_locator": {
+        "kind": "css",
+        "value": "*",
+        "options": {
+          "nth": 0
+        },
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "html:nth-of-type(1)",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "html",
+        "stable_attrs": {},
+        "short_text": "elements text box check box radio button web tables buttons links broken links - images upload and download dynamic prop",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "css",
+          "value": "*",
+          "options": {
+            "nth": 0
+          },
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "html",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//html[contains(normalize-space(), 'elements text box check box radio button web tables buttons links broken links - images upload and download dynamic prop')]",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "/html[1]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "html:nth-of-type(1)",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {},
+      "last_seen": "2026-03-01T22:41:39.601412+00:00",
+      "success_count": 5,
+      "fail_count": 9
+    },
+    "row1_last_name_vega": {
+      "id": "ea2c0c69-ed25-4ac0-9daa-a69df2aceb51",
+      "app_id": "demo-qa-app",
+      "page_name": "webtables",
+      "element_name": "row1_last_name_vega",
+      "field_type": "text",
+      "last_good_locator": {
+        "kind": "text",
+        "value": "Vega",
+        "options": {
+          "exact": true,
+          "nth": 0
+        },
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "div.col-12.mt-4:nth-of-type(2) > div.web-tables-wrapper:nth-of-type(2) > div.ReactTable.-striped:nth-of-type(3) > div.rt-table:nth-of-type(1) > div.rt-tbody:nth-of-type(2) > div.rt-tr-group:nth-of-type(1) > div.rt-tr.-odd:nth-of-type(1) > div.rt-td:nth-of-type(2)",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "div",
+        "stable_attrs": {
+          "role": "gridcell"
+        },
+        "short_text": "vega",
+        "container_path": [
+          "role:row",
+          "role:rowgroup",
+          "role:grid"
+        ],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "text",
+          "value": "Vega",
+          "options": {
+            "exact": true,
+            "nth": 0
+          },
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "role",
+          "value": "gridcell",
+          "options": {
+            "name": "vega",
+            "exact": false
+          },
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//*[@role='gridcell' and contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'vega')]",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[3]/div[1]/div[2]/div[1]/div[1]/div[2]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "div.col-12.mt-4:nth-of-type(2) > div.web-tables-wrapper:nth-of-type(2) > div.ReactTable.-striped:nth-of-type(3) > div.rt-table:nth-of-type(1) > div.rt-tbody:nth-of-type(2) > div.rt-tr-group:nth-of-type(1) > div.rt-tr.-odd:nth-of-type(1) > div.rt-td:nth-of-type(2)",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.65,
+        "similarity_score": 1.0,
+        "overall_score": 0.86,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "text",
+        "locator_value": "Vega",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:50.465684+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:29:01.073650+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:29:46.283569+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-01T22:41:39.704221+00:00",
+            "overall_score": 0.86,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.65,
+            "similarity_score": 1.0
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:39.651925+00:00",
+      "success_count": 9,
+      "fail_count": 0
+    }
+  }
+}

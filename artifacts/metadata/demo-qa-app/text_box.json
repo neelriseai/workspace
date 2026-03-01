@@ -1,0 +1,685 @@
+{
+  "app_id": "demo-qa-app",
+  "page_name": "text_box",
+  "elements": {
+    "full_name": {
+      "id": "ae4151f2-4043-49ac-a40e-c2be827f6310",
+      "app_id": "demo-qa-app",
+      "page_name": "text_box",
+      "element_name": "full_name",
+      "field_type": "textbox",
+      "last_good_locator": {
+        "kind": "xpath",
+        "value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "options": {},
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "[placeholder=\"Full Name\"]",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "input",
+        "stable_attrs": {
+          "placeholder": "Full Name",
+          "type": "text"
+        },
+        "short_text": "",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "xpath",
+          "value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+          "options": {},
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "[placeholder=\"Full Name\"]",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//*[@placeholder='Full Name']",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "//*[@id=\"userName\"]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "#userName",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.52,
+        "similarity_score": 0.9,
+        "overall_score": 0.788,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "xpath",
+        "locator_value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:38.877873+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:28:49.491212+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:29:34.529028+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:41:28.692266+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:28.642474+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    },
+    "email": {
+      "id": "265672ea-109b-49c7-9ead-80f6d519a8df",
+      "app_id": "demo-qa-app",
+      "page_name": "text_box",
+      "element_name": "email",
+      "field_type": "textbox",
+      "last_good_locator": {
+        "kind": "xpath",
+        "value": "//label[normalize-space()='Email' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'email')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "options": {},
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "[placeholder=\"name@example.com\"]",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "input",
+        "stable_attrs": {
+          "placeholder": "name@example.com",
+          "type": "email"
+        },
+        "short_text": "",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "xpath",
+          "value": "//label[normalize-space()='Email' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'email')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+          "options": {},
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "[placeholder=\"name@example.com\"]",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//*[@placeholder='name@example.com']",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "//*[@id=\"userEmail\"]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "#userEmail",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.52,
+        "similarity_score": 0.9,
+        "overall_score": 0.788,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "xpath",
+        "locator_value": "//label[normalize-space()='Email' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'email')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:39.042837+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:28:49.640761+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:29:34.679834+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:41:28.853011+00:00",
+            "overall_score": 0.788,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.52,
+            "similarity_score": 0.9
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:28.802216+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    },
+    "current_address": {
+      "id": "1f10899f-66d1-4573-9337-445f7170acef",
+      "app_id": "demo-qa-app",
+      "page_name": "text_box",
+      "element_name": "current_address",
+      "field_type": "textbox",
+      "last_good_locator": {
+        "kind": "xpath",
+        "value": "//label[normalize-space()='Current Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'current address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "options": {},
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "[placeholder=\"Current Address\"]",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "textarea",
+        "stable_attrs": {
+          "placeholder": "Current Address"
+        },
+        "short_text": "",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "xpath",
+          "value": "//label[normalize-space()='Current Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'current address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+          "options": {},
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "[placeholder=\"Current Address\"]",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//*[@placeholder='Current Address']",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "//*[@id=\"currentAddress\"]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "#currentAddress",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.49,
+        "similarity_score": 0.9,
+        "overall_score": 0.776,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "xpath",
+        "locator_value": "//label[normalize-space()='Current Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'current address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:39.190630+00:00",
+            "overall_score": 0.776,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.49,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:28:49.789571+00:00",
+            "overall_score": 0.776,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.49,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:29:34.826568+00:00",
+            "overall_score": 0.776,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.49,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:41:28.997428+00:00",
+            "overall_score": 0.776,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.49,
+            "similarity_score": 0.9
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:28.951178+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    },
+    "permanent_address": {
+      "id": "26b2fff7-839e-4897-a300-de43c45f18f4",
+      "app_id": "demo-qa-app",
+      "page_name": "text_box",
+      "element_name": "permanent_address",
+      "field_type": "textbox",
+      "last_good_locator": {
+        "kind": "xpath",
+        "value": "//label[normalize-space()='Permanent Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'permanent address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "options": {},
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "textarea",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "textarea",
+        "stable_attrs": {},
+        "short_text": "",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "xpath",
+          "value": "//label[normalize-space()='Permanent Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'permanent address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+          "options": {},
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "css",
+          "value": "textarea",
+          "options": {},
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//textarea",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "//*[@id=\"permanentAddress\"]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "#permanentAddress",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.46,
+        "similarity_score": 0.35,
+        "overall_score": 0.654,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "xpath",
+        "locator_value": "//label[normalize-space()='Permanent Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'permanent address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:39.334835+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:28:49.937991+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:29:34.971727+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          },
+          {
+            "timestamp": "2026-03-01T22:41:29.141924+00:00",
+            "overall_score": 0.654,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.46,
+            "similarity_score": 0.35
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:29.092140+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    },
+    "submit": {
+      "id": "5c05ffff-3558-4440-b071-2d6e0cfd2612",
+      "app_id": "demo-qa-app",
+      "page_name": "text_box",
+      "element_name": "submit",
+      "field_type": "button",
+      "last_good_locator": {
+        "kind": "role",
+        "value": "button",
+        "options": {
+          "name": "Submit",
+          "exact": true
+        },
+        "scope": null
+      },
+      "robust_locator": {
+        "kind": "css",
+        "value": "#submit",
+        "options": {},
+        "scope": null
+      },
+      "strategy_id": "metadata.last_good",
+      "signature": {
+        "tag": "button",
+        "stable_attrs": {
+          "type": "button"
+        },
+        "short_text": "submit",
+        "container_path": [],
+        "component_kind": null
+      },
+      "hints": {
+        "attr_priority_order": [
+          "data-testid",
+          "aria-label",
+          "name",
+          "formcontrolname",
+          "placeholder",
+          "role",
+          "href",
+          "col-id",
+          "aria-colindex",
+          "class"
+        ],
+        "threshold": null,
+        "visibility_pref": true,
+        "aliases": {},
+        "defaults": {},
+        "allow_position_fallback": false,
+        "strict_single_match": true
+      },
+      "locator_variants": {
+        "last_good": {
+          "kind": "role",
+          "value": "button",
+          "options": {
+            "name": "Submit",
+            "exact": true
+          },
+          "scope": null
+        },
+        "robust_css": {
+          "kind": "role",
+          "value": "button",
+          "options": {
+            "name": "submit",
+            "exact": false
+          },
+          "scope": null
+        },
+        "robust_xpath": {
+          "kind": "xpath",
+          "value": "//button[contains(normalize-space(), 'submit')]",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "//*[@id=\"submit\"]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "#submit",
+          "options": {},
+          "scope": null
+        }
+      },
+      "quality_metrics": {
+        "uniqueness_score": 1.0,
+        "stability_score": 0.93,
+        "similarity_score": 0.9,
+        "overall_score": 0.952,
+        "matched_count": 1,
+        "chosen_index": 0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "strategy_id": "metadata.last_good",
+        "strategy_score": null,
+        "locator_kind": "role",
+        "locator_value": "button",
+        "valid_against_hints": true,
+        "history": [
+          {
+            "timestamp": "2026-03-01T22:26:39.642289+00:00",
+            "overall_score": 0.952,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.93,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:28:50.260938+00:00",
+            "overall_score": 0.952,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.93,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:29:35.294569+00:00",
+            "overall_score": 0.952,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.93,
+            "similarity_score": 0.9
+          },
+          {
+            "timestamp": "2026-03-01T22:41:29.457278+00:00",
+            "overall_score": 0.952,
+            "strategy_id": "metadata.last_good",
+            "uniqueness_score": 1.0,
+            "stability_score": 0.93,
+            "similarity_score": 0.9
+          }
+        ]
+      },
+      "last_seen": "2026-03-01T22:41:29.407424+00:00",
+      "success_count": 14,
+      "fail_count": 0
+    }
+  }
+}
