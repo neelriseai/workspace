@@ -12,25 +12,25 @@ from typing import Iterator
 
 @dataclass(slots=True)
 class Timing:
-    """Prompt scaffold for class `Timing` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     start: float
 
     end: float | None = None
 
     @property
     def elapsed_ms(self) -> float:
-        """
-        Prompt:
-        Implement this method: `elapsed_ms(self) -> float`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: elapsed_ms(self) -> float
+        # Dependent call placeholders from original flow:
+        # - time.perf_counter()
+        # TODO: Replace placeholder with a concrete `float` value.
+        return None
 
 @contextmanager
 def timed() -> Iterator[Timing]:
-    """
-    Prompt:
-    Implement this function: `timed() -> Iterator[Timing]`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: timed() -> Iterator[Timing]
+    # Dependent call placeholders from original flow:
+    # - time.perf_counter()
+    # TODO: Replace placeholder with a concrete `Iterator[Timing]` value.
+    return None

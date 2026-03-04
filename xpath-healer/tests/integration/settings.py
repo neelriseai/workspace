@@ -11,16 +11,18 @@ from dataclasses import dataclass
 from pathlib import Path
 
 def _env_bool(name: str, default: bool) -> bool:
-    """
-    Prompt:
-    Implement this function: `_env_bool(name: str, default: bool) -> bool`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: _env_bool(name: str, default: bool) -> bool
+    # Dependent call placeholders from original flow:
+    # - os.getenv(name)
+    # - value.strip().casefold()
+    # - value.strip()
+    # TODO: Replace placeholder with a concrete `bool` value.
+    return None
 
 @dataclass(frozen=True)
 class IntegrationSettings:
-    """Prompt scaffold for class `IntegrationSettings` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     base_url: str
 
     browser_engine: str
@@ -64,17 +66,26 @@ class IntegrationSettings:
     video_height: int
 
 def load_settings(config_path: Path | None = None) -> IntegrationSettings:
-    """
-    Prompt:
-    Implement this function: `load_settings(config_path: Path | None = None) -> IntegrationSettings`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: load_settings(config_path: Path | None = None) -> IntegrationSettings
+    # Dependent call placeholders from original flow:
+    # - Path(__file__).with_name('config.json')
+    # - config_path.open('r', encoding='utf-8')
+    # - json.load(fh)
+    # - os.getenv('XH_BASE_URL', str(raw.get('base_url') or '')).rstrip('/')
+    # - os.getenv('XH_BASE_URL', str(raw.get('base_url') or ''))
+    # - raw.get('base_url')
+    # TODO: Replace placeholder with a concrete `IntegrationSettings` value.
+    return None
 
 def ensure_artifact_dirs(settings: IntegrationSettings) -> None:
-    """
-    Prompt:
-    Implement this function: `ensure_artifact_dirs(settings: IntegrationSettings) -> None`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: ensure_artifact_dirs(settings: IntegrationSettings) -> None
+    # Dependent call placeholders from original flow:
+    # - settings.artifacts_root.mkdir(parents=True, exist_ok=True)
+    # - settings.reports_dir.mkdir(parents=True, exist_ok=True)
+    # - settings.logs_dir.mkdir(parents=True, exist_ok=True)
+    # - settings.screenshots_dir.mkdir(parents=True, exist_ok=True)
+    # - settings.videos_dir.mkdir(parents=True, exist_ok=True)
+    # - settings.metadata_dir.mkdir(parents=True, exist_ok=True)
+    return None

@@ -5,12 +5,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 class Embedder(ABC):
-    """Prompt scaffold for class `Embedder` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     @abstractmethod
     async def embed_text(self, text: str) -> list[float]:
-        """
-        Prompt:
-        Implement this method: `embed_text(self, text: str) -> list[float]`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: embed_text(self, text: str) -> list[float]
+        # TODO: Replace placeholder with a concrete `list[float]` value.
+        return None

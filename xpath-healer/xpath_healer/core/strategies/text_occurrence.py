@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from xpath_healer.core.context import StrategyContext
 
 class TextOccurrenceStrategy(Strategy):
-    """Prompt scaffold for class `TextOccurrenceStrategy` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     id = 'text_occurrence'
 
     priority = 230
@@ -22,17 +22,20 @@ class TextOccurrenceStrategy(Strategy):
     stage = 'defaults'
 
     def supports(self, field_type: str, vars_map: dict[str, str]) -> bool:
-        """
-        Prompt:
-        Implement this method: `supports(self, field_type: str, vars_map: dict[str, str]) -> bool`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: supports(self, field_type: str, vars_map: dict[str, str]) -> bool
+        # Dependent call placeholders from original flow:
+        # - vars_map.get('text')
+        # - vars_map.get('label')
+        # - vars_map.get('label_text')
+        # TODO: Replace placeholder with a concrete `bool` value.
+        return None
 
     async def build(self, ctx: 'StrategyContext', inp: BuildInput) -> list[LocatorSpec]:
-        """
-        Prompt:
-        Implement this method: `build(self, ctx: 'StrategyContext', inp: BuildInput) -> list[LocatorSpec]`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: build(self, ctx: 'StrategyContext', inp: BuildInput) -> list[LocatorSpec]
+        # Dependent call placeholders from original flow:
+        # - inp.vars.get('text')
+        # - text.replace("'", "\\'")
+        # TODO: Replace placeholder with a concrete `list[LocatorSpec]` value.
+        return None

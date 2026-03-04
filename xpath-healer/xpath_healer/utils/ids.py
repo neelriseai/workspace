@@ -5,9 +5,9 @@ from __future__ import annotations
 import uuid
 
 def new_correlation_id() -> str:
-    """
-    Prompt:
-    Implement this function: `new_correlation_id() -> str`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: new_correlation_id() -> str
+    # Dependent call placeholders from original flow:
+    # - uuid.uuid4()
+    # TODO: Replace placeholder with a concrete `str` value.
+    return None

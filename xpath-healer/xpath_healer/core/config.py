@@ -12,19 +12,19 @@ DEFAULT_ATTRIBUTE_PRIORITY = ['data-testid', 'aria-label', 'name', 'formcontroln
 
 @dataclass(slots=True)
 class ValidatorGeometryConfig:
-    """Prompt scaffold for class `ValidatorGeometryConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     enabled: bool = True
 
     tolerance_px: float = 8.0
 
 @dataclass(slots=True)
 class ValidatorAxisConfig:
-    """Prompt scaffold for class `ValidatorAxisConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     enabled: bool = True
 
 @dataclass(slots=True)
 class ValidatorConfig:
-    """Prompt scaffold for class `ValidatorConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     require_visible: bool = True
 
     require_enabled_for_interactives: bool = True
@@ -37,31 +37,31 @@ class ValidatorConfig:
 
 @dataclass(slots=True)
 class DomSnapshotConfig:
-    """Prompt scaffold for class `DomSnapshotConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     cache_ttl_sec: int = 30
 
 @dataclass(slots=True)
 class StoreConfig:
-    """Prompt scaffold for class `StoreConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     enabled: bool = True
 
     persist_events: bool = True
 
 @dataclass(slots=True)
 class RagConfig:
-    """Prompt scaffold for class `RagConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     enabled: bool = False
 
     top_k: int = 5
 
 @dataclass(slots=True)
 class LoggingConfig:
-    """Prompt scaffold for class `LoggingConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     level: str = 'INFO'
 
 @dataclass(slots=True)
 class HealerConfig:
-    """Prompt scaffold for class `HealerConfig` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     attribute_priority: list[str] = field(default_factory=lambda: list(DEFAULT_ATTRIBUTE_PRIORITY))
 
     similarity_threshold: float = 0.72
@@ -79,18 +79,21 @@ class HealerConfig:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     def to_dict(self) -> dict:
-        """
-        Prompt:
-        Implement this method: `to_dict(self) -> dict`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: to_dict(self) -> dict
+        # TODO: Replace placeholder with a concrete `dict` value.
+        return None
 
     @classmethod
     def from_env(cls, prefix: str = 'XH_') -> HealerConfig:
-        """
-        Prompt:
-        Implement this method: `from_env(cls, prefix: str = 'XH_') -> HealerConfig`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: from_env(cls, prefix: str = 'XH_') -> HealerConfig
+        # Dependent call placeholders from original flow:
+        # - os.getenv(f'{prefix}ATTRIBUTE_PRIORITY')
+        # - token.strip()
+        # - attr_priority.split(',')
+        # - os.getenv(f'{prefix}SIMILARITY_THRESHOLD')
+        # - os.getenv(f'{prefix}ALLOW_POSITION_FALLBACK')
+        # - os.getenv(f'{prefix}VALIDATOR_REQUIRE_VISIBLE')
+        # TODO: Replace placeholder with a concrete `HealerConfig` value.
+        return None

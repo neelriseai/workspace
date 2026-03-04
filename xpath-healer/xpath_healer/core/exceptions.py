@@ -7,11 +7,12 @@ from dataclasses import dataclass
 from xpath_healer.core.models import StrategyTrace
 
 class XPathHealerError(Exception):
-    """Prompt scaffold for class `XPathHealerError` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
+    pass
 
 @dataclass(slots=True)
 class RecoveryFailed(XPathHealerError):
-    """Prompt scaffold for class `RecoveryFailed` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     message: str
 
     correlation_id: str
@@ -19,9 +20,7 @@ class RecoveryFailed(XPathHealerError):
     trace: list[StrategyTrace]
 
     def __str__(self) -> str:
-        """
-        Prompt:
-        Implement this method: `__str__(self) -> str`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: __str__(self) -> str
+        # TODO: Replace placeholder with a concrete `str` value.
+        return None

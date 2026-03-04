@@ -22,9 +22,7 @@ from xpath_healer.utils.logging import configure_logging, get_logger
 
 @pytest.fixture
 def simple_context() -> StrategyContext:
-    """
-    Prompt:
-    Implement this function: `simple_context() -> StrategyContext`.
-    Keep the same arguments and return contract while recreating behavior.
-    """
-    raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+    # Prompt: Implement this function keeping the same signature and return contract.
+    # Signature: simple_context() -> StrategyContext
+    # TODO: Replace placeholder with a concrete `StrategyContext` value.
+    return None

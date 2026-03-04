@@ -24,7 +24,7 @@ from xpath_healer.store.repository import MetadataRepository
 
 @dataclass(slots=True)
 class StrategyContext:
-    """Prompt scaffold for class `StrategyContext` with original members/signatures."""
+    """Prompt scaffold class preserving original members/signatures."""
     config: HealerConfig
 
     repository: MetadataRepository
@@ -48,17 +48,18 @@ class StrategyContext:
     rag_assist: object | None = None
 
     def template_set(self, page_name: str, element_name: str) -> list[dict]:
-        """
-        Prompt:
-        Implement this method: `template_set(self, page_name: str, element_name: str) -> list[dict]`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: template_set(self, page_name: str, element_name: str) -> list[dict]
+        # Dependent call placeholders from original flow:
+        # - merged.extend(self.templates.get(key, []))
+        # - self.templates.get(key, [])
+        # TODO: Replace placeholder with a concrete `list[dict]` value.
+        return None
 
     def resolve_hints(self, app_id: str, page_name: str, element_name: str, override: HealingHints | None = None) -> HealingHints:
-        """
-        Prompt:
-        Implement this method: `resolve_hints(self, app_id: str, page_name: str, element_name: str, override: HealingHints | None = None) -> HealingHints`.
-        Keep the same arguments and return contract while recreating behavior.
-        """
-        raise NotImplementedError("Scaffold stub: implement based on the prompt above.")
+        # Prompt: Implement this method keeping the same signature and return contract.
+        # Signature: resolve_hints(self, app_id: str, page_name: str, element_name: str, override: HealingHints | None = None) -> HealingHints
+        # Dependent call placeholders from original flow:
+        # - self.hints_index.get(key)
+        # TODO: Replace placeholder with a concrete `HealingHints` value.
+        return None
