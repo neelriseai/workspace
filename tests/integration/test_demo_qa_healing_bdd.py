@@ -17,7 +17,7 @@ from pytest_bdd import given, parsers, scenarios, then, when
 
 from xpath_healer.api.facade import XPathHealerFacade
 from xpath_healer.core.models import LocatorSpec, Recovered
-from xpath_healer.store.json_repository import JsonMetadataRepository
+from xpath_healer.store.repository import MetadataRepository
 from tests.integration.conftest import AsyncRuntime
 from tests.integration.settings import IntegrationSettings
 
@@ -30,7 +30,7 @@ scenarios("features/demo_qa_healing.feature")
 
 
 @pytest.fixture
-def healer(metadata_repository: JsonMetadataRepository) -> XPathHealerFacade:
+def healer(metadata_repository: MetadataRepository) -> XPathHealerFacade:
     return XPathHealerFacade(repository=metadata_repository)
 
 

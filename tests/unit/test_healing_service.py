@@ -29,7 +29,7 @@ async def test_recover_with_attribute_then_metadata_reuse() -> None:
     )
     assert first.status == "success"
     assert first.locator_spec is not None
-    assert first.strategy_id in {"attribute", "metadata.last_good", "metadata.robust"}
+    assert first.strategy_id in {"attribute", "metadata.last_good", "metadata.robust", "metadata.robust_xpath"}
 
     second = await facade.recover_locator(
         page=page,
@@ -41,5 +41,4 @@ async def test_recover_with_attribute_then_metadata_reuse() -> None:
         vars={},
     )
     assert second.status == "success"
-    assert second.strategy_id in {"metadata.last_good", "metadata.robust"}
-
+    assert second.strategy_id in {"metadata.last_good", "metadata.robust", "metadata.robust_xpath"}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,7 +30,10 @@ from xpath_healer.core.strategy_registry import StrategyRegistry
 from xpath_healer.core.validator import XPathValidator
 from xpath_healer.dom.mine import DomMiner
 from xpath_healer.dom.snapshot import DomSnapshotter
+from xpath_healer.store.dual_repository import DualMetadataRepository
+from xpath_healer.store.json_repository import JsonMetadataRepository
 from xpath_healer.store.memory_repository import InMemoryMetadataRepository
+from xpath_healer.store.pg_repository import PostgresMetadataRepository
 from xpath_healer.store.repository import MetadataRepository
 from xpath_healer.utils.logging import configure_logging, get_logger
 
@@ -47,7 +51,7 @@ class XPathHealerFacade:
         configure_logging(self.config.logging.level)
         self.logger = get_logger("xpath_healer")
 
-        self.repository = repository or InMemoryMetadataRepository()
+        self.repository = repository or self._build_repository_from_env()
         self.validator = XPathValidator(self.config.validator)
         self.similarity = SimilarityService(self.config.similarity_threshold)
         self.signature_extractor = SignatureExtractor()
@@ -57,6 +61,7 @@ class XPathHealerFacade:
         self.registry = StrategyRegistry(self._default_strategies())
         self.builder = XPathBuilder(self.registry)
         self.healing_service = HealingService(self.builder)
+        resolved_rag_assist = rag_assist if rag_assist is not None else self._build_rag_assist_from_env()
         self.ctx = StrategyContext(
             config=self.config,
             repository=self.repository,
@@ -68,7 +73,7 @@ class XPathHealerFacade:
             logger=self.logger,
             templates=templates or {},
             hints_index=hints_index or {},
-            rag_assist=rag_assist,
+            rag_assist=resolved_rag_assist,
         )
 
     async def recover_locator(
@@ -191,3 +196,48 @@ class XPathHealerFacade:
         if field_type.lower() in {"button"} and vars_map.get("text"):
             return LocatorSpec(kind="role", value="button", options={"name": vars_map["text"], "exact": False})
         return LocatorSpec(kind="css", value="*")
+
+    def _build_rag_assist_from_env(self) -> object | None:
+        if not self.config.rag.enabled:
+            return None
+
+        api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+        pg_dsn = (os.getenv("XH_PG_DSN") or "").strip()
+        if not api_key or "placeholder" in api_key.casefold() or api_key.startswith("<"):
+            self.logger.warning("RAG disabled: OPENAI_API_KEY is missing or placeholder.")
+            return None
+        if not pg_dsn:
+            self.logger.warning("RAG disabled: XH_PG_DSN is not configured.")
+            return None
+
+        try:
+            from xpath_healer.rag import OpenAIEmbedder, OpenAILLM, PgVectorRetriever, RagAssist
+
+            embed_model = (os.getenv("XH_OPENAI_EMBED_MODEL") or "text-embedding-3-small").strip()
+            chat_model = (os.getenv("XH_OPENAI_MODEL") or "gpt-4.1").strip()
+            embedder = OpenAIEmbedder(api_key=api_key, model=embed_model)
+            retriever = PgVectorRetriever(dsn=pg_dsn)
+            llm = OpenAILLM(api_key=api_key, model=chat_model)
+            return RagAssist(embedder=embedder, retriever=retriever, llm=llm)
+        except Exception as exc:
+            self.logger.warning("RAG disabled: could not initialize adapters (%s).", exc)
+            return None
+
+    def _build_repository_from_env(self) -> MetadataRepository:
+        pg_dsn = (os.getenv("XH_PG_DSN") or "").strip()
+        if not pg_dsn:
+            return InMemoryMetadataRepository()
+
+        pool_min = int((os.getenv("XH_PG_POOL_MIN") or "1").strip())
+        pool_max = int((os.getenv("XH_PG_POOL_MAX") or "10").strip())
+        auto_init = (os.getenv("XH_PG_AUTO_INIT_SCHEMA") or "false").strip().casefold() in {"1", "true", "yes", "on"}
+        json_dir = (os.getenv("XH_METADATA_JSON_DIR") or "artifacts/metadata").strip()
+        self.logger.info("Using dual metadata repository: Postgres primary + JSON fallback.")
+        pg_repo = PostgresMetadataRepository(
+            dsn=pg_dsn,
+            pool_min_size=pool_min,
+            pool_max_size=pool_max,
+            auto_init_schema=auto_init,
+        )
+        json_repo = JsonMetadataRepository(json_dir)
+        return DualMetadataRepository(primary=pg_repo, fallback=json_repo)

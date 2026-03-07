@@ -60,6 +60,14 @@ class RagConfig:
 
 
 @dataclass(slots=True)
+class RetryConfig:
+    enabled: bool = True
+    max_attempts: int = 2
+    delay_ms: int = 30
+    retry_reason_codes: list[str] = field(default_factory=lambda: ["locator_error", "not_visible"])
+
+
+@dataclass(slots=True)
 class LoggingConfig:
     level: str = "INFO"
 
@@ -73,6 +81,7 @@ class HealerConfig:
     dom: DomSnapshotConfig = field(default_factory=DomSnapshotConfig)
     store: StoreConfig = field(default_factory=StoreConfig)
     rag: RagConfig = field(default_factory=RagConfig)
+    retry: RetryConfig = field(default_factory=RetryConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     def to_dict(self) -> dict:
@@ -131,9 +140,23 @@ class HealerConfig:
         if rag_top_k:
             cfg.rag.top_k = int(rag_top_k)
 
+        cfg.retry.enabled = coerce_bool(os.getenv(f"{prefix}RETRY_ENABLED"), cfg.retry.enabled)
+        retry_max_attempts = os.getenv(f"{prefix}RETRY_MAX_ATTEMPTS")
+        if retry_max_attempts:
+            cfg.retry.max_attempts = max(1, int(retry_max_attempts))
+        retry_delay_ms = os.getenv(f"{prefix}RETRY_DELAY_MS")
+        if retry_delay_ms:
+            cfg.retry.delay_ms = max(0, int(retry_delay_ms))
+        retry_reasons = os.getenv(f"{prefix}RETRY_REASON_CODES")
+        if retry_reasons:
+            cfg.retry.retry_reason_codes = [
+                token.strip().casefold()
+                for token in retry_reasons.split(",")
+                if token.strip()
+            ]
+
         level = os.getenv(f"{prefix}LOG_LEVEL")
         if level:
             cfg.logging.level = level.upper().strip()
 
         return cfg
-

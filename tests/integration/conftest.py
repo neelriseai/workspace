@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 from html import escape
 from datetime import UTC, datetime
@@ -18,7 +19,10 @@ pytest.importorskip("playwright.async_api")
 from playwright.async_api import async_playwright
 
 from tests.integration.settings import IntegrationSettings, ensure_artifact_dirs, load_settings
+from xpath_healer.store.dual_repository import DualMetadataRepository
 from xpath_healer.store.json_repository import JsonMetadataRepository
+from xpath_healer.store.pg_repository import PostgresMetadataRepository
+from xpath_healer.store.repository import MetadataRepository
 
 
 def _slug(value: str) -> str:
@@ -56,6 +60,181 @@ class AsyncRuntime:
 
     def run(self, awaitable: Any) -> Any:
         return self.loop.run_until_complete(awaitable)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().casefold() in {"1", "true", "yes", "y", "on"}
+
+
+class LoggedMetadataRepository(MetadataRepository):
+    def __init__(
+        self,
+        backend: MetadataRepository,
+        logger: logging.Logger,
+        report_jsonl: Path,
+    ) -> None:
+        self.backend = backend
+        self.logger = logger
+        self.report_jsonl = report_jsonl
+        self.events: list[dict[str, Any]] = []
+        backend_events = getattr(backend, "events", None)
+        if isinstance(backend_events, list):
+            self.events = backend_events
+
+    def _record_db_op(
+        self,
+        operation: str,
+        status: str,
+        details: dict[str, Any],
+    ) -> None:
+        backend_name = type(self.backend).__name__
+        payload = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "record_type": "db_operation",
+            "status": status,
+            "db_operation": operation,
+            "db_backend": backend_name,
+            **details,
+        }
+        self.logger.info(
+            "db_operation backend=%s operation=%s status=%s details=%s",
+            backend_name,
+            operation,
+            status,
+            details,
+        )
+        _append_jsonl(self.report_jsonl, payload)
+
+    async def find(self, app_id: str, page_name: str, element_name: str) -> Any:
+        try:
+            out = await self.backend.find(app_id, page_name, element_name)
+            self._record_db_op(
+                operation="find",
+                status="ok",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "element_name": element_name,
+                    "result": "hit" if out else "miss",
+                },
+            )
+            return out
+        except Exception as exc:
+            self._record_db_op(
+                operation="find",
+                status="fail",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "element_name": element_name,
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def upsert(self, meta: Any) -> None:
+        try:
+            await self.backend.upsert(meta)
+            self._record_db_op(
+                operation="upsert",
+                status="ok",
+                details={
+                    "app_id": getattr(meta, "app_id", ""),
+                    "page_name": getattr(meta, "page_name", ""),
+                    "element_name": getattr(meta, "element_name", ""),
+                    "field_type": getattr(meta, "field_type", ""),
+                    "success_count": getattr(meta, "success_count", None),
+                    "fail_count": getattr(meta, "fail_count", None),
+                },
+            )
+        except Exception as exc:
+            self._record_db_op(
+                operation="upsert",
+                status="fail",
+                details={
+                    "app_id": getattr(meta, "app_id", ""),
+                    "page_name": getattr(meta, "page_name", ""),
+                    "element_name": getattr(meta, "element_name", ""),
+                    "field_type": getattr(meta, "field_type", ""),
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def find_candidates_by_page(
+        self,
+        app_id: str,
+        page_name: str,
+        field_type: str,
+        limit: int = 25,
+    ) -> list[Any]:
+        try:
+            out = await self.backend.find_candidates_by_page(app_id, page_name, field_type, limit=limit)
+            self._record_db_op(
+                operation="find_candidates_by_page",
+                status="ok",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "field_type": field_type,
+                    "limit": limit,
+                    "result_count": len(out),
+                },
+            )
+            return out
+        except Exception as exc:
+            self._record_db_op(
+                operation="find_candidates_by_page",
+                status="fail",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "field_type": field_type,
+                    "limit": limit,
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def log_event(self, event: dict[str, Any]) -> None:
+        try:
+            await self.backend.log_event(event)
+            if not hasattr(self.backend, "events"):
+                self.events.append(event)
+            self._record_db_op(
+                operation="log_event",
+                status="ok",
+                details={
+                    "app_id": event.get("app_id"),
+                    "page_name": event.get("page_name"),
+                    "element_name": event.get("element_name"),
+                    "stage": event.get("stage"),
+                },
+            )
+        except Exception as exc:
+            self._record_db_op(
+                operation="log_event",
+                status="fail",
+                details={
+                    "app_id": event.get("app_id"),
+                    "page_name": event.get("page_name"),
+                    "element_name": event.get("element_name"),
+                    "stage": event.get("stage"),
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def close(self) -> None:
+        close_method = getattr(self.backend, "close", None)
+        if close_method is None:
+            return
+        maybe = close_method()
+        if asyncio.iscoroutine(maybe):
+            await maybe
 
 
 @pytest.fixture(scope="session")
@@ -137,11 +316,46 @@ def prepare_artifacts(integration_settings: IntegrationSettings) -> None:
 
 
 @pytest.fixture(scope="session")
-def metadata_repository(integration_settings: IntegrationSettings) -> JsonMetadataRepository:
-    return JsonMetadataRepository(integration_settings.metadata_dir)
+def metadata_repository(
+    integration_settings: IntegrationSettings,
+    integration_logger: logging.Logger,
+) -> LoggedMetadataRepository:
+    pg_dsn = (os.getenv("XH_PG_DSN") or "").strip()
+    json_backend = JsonMetadataRepository(integration_settings.metadata_dir)
+    if pg_dsn:
+        pg_backend: MetadataRepository = PostgresMetadataRepository(
+            dsn=pg_dsn,
+            pool_min_size=int((os.getenv("XH_PG_POOL_MIN") or "1").strip()),
+            pool_max_size=int((os.getenv("XH_PG_POOL_MAX") or "10").strip()),
+            auto_init_schema=_env_bool("XH_PG_AUTO_INIT_SCHEMA", True),
+        )
+        backend: MetadataRepository = DualMetadataRepository(primary=pg_backend, fallback=json_backend)
+        integration_logger.info("metadata_repository backend=DualMetadataRepository(primary=Postgres,fallback=Json)")
+    else:
+        backend = json_backend
+        integration_logger.info("metadata_repository backend=JsonMetadataRepository")
+
+    return LoggedMetadataRepository(
+        backend=backend,
+        logger=integration_logger,
+        report_jsonl=integration_settings.healing_calls_jsonl,
+    )
 
 
-@pytest.fixture
+@pytest.fixture(scope="session", autouse=True)
+def metadata_repository_lifecycle(
+    metadata_repository: LoggedMetadataRepository,
+    runtime: AsyncRuntime,
+) -> Any:
+    yield
+    try:
+        runtime.run(metadata_repository.close())
+    except Exception:
+        # Repository close is best-effort in integration teardown.
+        pass
+
+
+@pytest.fixture(scope="session")
 def runtime() -> Any:
     loop = asyncio.new_event_loop()
     try:
@@ -337,12 +551,17 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     settings = load_settings()
     ensure_artifact_dirs(settings)
     steps = _load_jsonl(settings.step_report_jsonl)
-    heals = _load_jsonl(settings.healing_calls_jsonl)
+    all_heals = _load_jsonl(settings.healing_calls_jsonl)
+    db_ops = [row for row in all_heals if row.get("record_type") == "db_operation"]
+    heals = [row for row in all_heals if row.get("record_type") != "db_operation"]
 
     pass_count = len([s for s in steps if s.get("status") == "passed"])
     fail_count = len([s for s in steps if s.get("status") == "failed"])
+    db_ok = len([row for row in db_ops if row.get("status") == "ok"])
+    db_fail = len([row for row in db_ops if row.get("status") == "fail"])
     summary = (
         f"<p>Step events: passed={pass_count}, failed={fail_count}. "
+        f"DB ops: ok={db_ok}, fail={db_fail}. "
         f"Session exitstatus={exitstatus}</p>"
     )
 
@@ -398,6 +617,22 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
             "</tr>"
         )
 
+    db_rows = []
+    for row in db_ops:
+        db_rows.append(
+            "<tr>"
+            f"<td>{escape(str(row.get('timestamp', '')))}</td>"
+            f"<td>{escape(str(row.get('db_backend', '')))}</td>"
+            f"<td>{escape(str(row.get('db_operation', '')))}</td>"
+            f"<td>{escape(str(row.get('status', '')))}</td>"
+            f"<td>{escape(str(row.get('app_id', '')))}</td>"
+            f"<td>{escape(str(row.get('page_name', '')))}</td>"
+            f"<td>{escape(str(row.get('element_name', '')))}</td>"
+            f"<td>{escape(str(row.get('result', row.get('result_count', row.get('stage', '')))))}</td>"
+            f"<td><code>{escape(str(row.get('error', '')))}</code></td>"
+            "</tr>"
+        )
+
     video_links = []
     for video in sorted(settings.videos_dir.glob("*.webm")):
         rel = Path("..") / Path("videos") / video.name
@@ -429,7 +664,9 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     <a href="integration-junit.xml">JUnit XML</a> |
     <a href="cucumber.json">Cucumber JSON</a> |
     <a href="steps.jsonl">Step JSONL</a> |
-    <a href="healing-calls.jsonl">Healing Calls JSONL</a>
+    <a href="healing-calls.jsonl">Healing Calls JSONL</a> |
+    <a href="../logs/integration.log">Integration Log</a> |
+    <a href="../logs/healing-flow.log">Healing Flow Log</a>
   </p>
   <h2>Step Details</h2>
   <table>
@@ -438,6 +675,15 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     </thead>
     <tbody>
       {''.join(step_rows)}
+    </tbody>
+  </table>
+  <h2>DB Operations</h2>
+  <table>
+    <thead>
+      <tr><th>Timestamp</th><th>Backend</th><th>Operation</th><th>Status</th><th>App</th><th>Page</th><th>Element</th><th>Result</th><th>Error</th></tr>
+    </thead>
+    <tbody>
+      {''.join(db_rows)}
     </tbody>
   </table>
   <h2>Healing Calls</h2>

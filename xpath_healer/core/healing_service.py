@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,6 +19,7 @@ from xpath_healer.core.models import (
 )
 from xpath_healer.utils.ids import new_correlation_id
 from xpath_healer.utils.logging import event
+from xpath_healer.utils.text import fuzzy_ratio, normalize_text
 from xpath_healer.utils.timing import timed
 
 
@@ -57,14 +59,14 @@ class HealingService:
         # 1) metadata reuse
         metadata_candidates = self._metadata_candidates(existing_meta, inp.field_type)
         if metadata_candidates:
-            success = await self._evaluate_candidates(ctx, inp, metadata_candidates, trace)
+            success = await self._evaluate_candidates_parallel(ctx, inp, metadata_candidates, trace)
             if success:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
         # 2) template / rule strategies
         rule_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"rules"})
-        success = await self._evaluate_candidates(ctx, inp, rule_candidates, trace)
+        success = await self._evaluate_candidates_parallel(ctx, inp, rule_candidates, trace)
         if success:
             candidate, validation = success
             return await self._on_success(ctx, inp, candidate, validation, trace)
@@ -83,17 +85,9 @@ class HealingService:
             candidate, validation = success
             return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # Optional RAG stage
-        if ctx.config.rag.enabled and ctx.rag_assist:
-            rag_candidates = await self._rag_candidates(ctx, inp)
-            success = await self._evaluate_candidates(ctx, inp, rag_candidates, trace)
-            if success:
-                candidate, validation = success
-                return await self._on_success(ctx, inp, candidate, validation, trace)
-
         # 5) code defaults
         default_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"defaults"})
-        success = await self._evaluate_candidates(ctx, inp, default_candidates, trace)
+        success = await self._evaluate_candidates_parallel(ctx, inp, default_candidates, trace)
         if success:
             candidate, validation = success
             return await self._on_success(ctx, inp, candidate, validation, trace)
@@ -104,6 +98,14 @@ class HealingService:
         if success:
             candidate, validation = success
             return await self._on_success(ctx, inp, candidate, validation, trace)
+
+        # 7) Optional RAG stage (final fallback)
+        if ctx.config.rag.enabled and ctx.rag_assist:
+            rag_candidates = await self._rag_candidates(ctx, inp)
+            success = await self._evaluate_candidates(ctx, inp, rag_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
         await self._persist_failure(ctx, inp, existing_meta)
         await self._log_stage_event(
@@ -131,15 +133,13 @@ class HealingService:
     ) -> tuple[CandidateSpec, ValidationResult] | None:
         for candidate in candidates:
             with timed() as span:
-                validation = await ctx.validator.validate_candidate(
-                    inp.page,
-                    candidate.locator,
-                    inp.field_type,
-                    inp.intent,
-                    strict_single_match=inp.hints.strict_single_match if inp.hints else None,
-                )
+                validation, attempts_used = await self._validate_candidate_with_retry(ctx, inp, candidate)
 
             status = "ok" if validation.ok else "fail"
+            details = dict(candidate.details)
+            if attempts_used > 1:
+                details["retry_attempts"] = attempts_used - 1
+                details["attempts_used"] = attempts_used
             stage_trace = StrategyTrace(
                 stage=candidate.stage,
                 strategy_id=candidate.strategy_id,
@@ -149,7 +149,7 @@ class HealingService:
                 score=candidate.score,
                 validation=validation,
                 duration_ms=span.elapsed_ms,
-                details=candidate.details,
+                details=details,
             )
             trace.append(stage_trace)
             await self._log_stage_event(
@@ -163,6 +163,7 @@ class HealingService:
                     "strategy_id": candidate.strategy_id,
                     "locator": candidate.locator.to_dict(),
                     "validation": validation.to_dict(),
+                    "attempts_used": attempts_used,
                 },
             )
             if validation.ok:
@@ -181,11 +182,145 @@ class HealingService:
             )
         return None
 
+    async def _evaluate_candidates_parallel(
+        self,
+        ctx: StrategyContext,
+        inp: BuildInput,
+        candidates: list[CandidateSpec],
+        trace: list[StrategyTrace],
+    ) -> tuple[CandidateSpec, ValidationResult] | None:
+        if not candidates:
+            return None
+
+        async def _run(index: int, candidate: CandidateSpec) -> tuple[int, CandidateSpec, ValidationResult, float, int]:
+            with timed() as span:
+                validation, attempts_used = await self._validate_candidate_with_retry(ctx, inp, candidate)
+            return index, candidate, validation, span.elapsed_ms, attempts_used
+
+        results = await asyncio.gather(*[_run(idx, candidate) for idx, candidate in enumerate(candidates)])
+        best: tuple[tuple[float, int], CandidateSpec, ValidationResult] | None = None
+
+        for index, candidate, validation, elapsed_ms, attempts_used in sorted(results, key=lambda item: item[0]):
+            status = "ok" if validation.ok else "fail"
+            details = dict(candidate.details)
+            if attempts_used > 1:
+                details["retry_attempts"] = attempts_used - 1
+                details["attempts_used"] = attempts_used
+            trace.append(
+                StrategyTrace(
+                    stage=candidate.stage,
+                    strategy_id=candidate.strategy_id,
+                    status=status,
+                    candidate_count=1,
+                    selected_locator=candidate.locator,
+                    score=candidate.score,
+                    validation=validation,
+                    duration_ms=elapsed_ms,
+                    details=details,
+                )
+            )
+            await self._log_stage_event(
+                ctx,
+                inp.correlation_id,
+                stage=candidate.stage,
+                status=status,
+                inp=inp,
+                score=candidate.score,
+                details={
+                    "strategy_id": candidate.strategy_id,
+                    "locator": candidate.locator.to_dict(),
+                    "validation": validation.to_dict(),
+                    "attempts_used": attempts_used,
+                },
+            )
+            if not validation.ok:
+                continue
+            score = candidate.score if candidate.score is not None else 0.0
+            selection_key = (score, -index)
+            if best is None or selection_key > best[0]:
+                best = (selection_key, candidate, validation)
+
+        if best is not None:
+            return best[1], best[2]
+
+        stage = candidates[0].stage
+        trace.append(
+            StrategyTrace(
+                stage=stage,
+                strategy_id=f"{stage}_summary",
+                status="fail",
+                candidate_count=len(candidates),
+                details={"reason": "no_valid_candidate"},
+            )
+        )
+        return None
+
+    async def _validate_candidate_with_retry(
+        self,
+        ctx: StrategyContext,
+        inp: BuildInput,
+        candidate: CandidateSpec,
+    ) -> tuple[ValidationResult, int]:
+        retry_cfg = getattr(ctx.config, "retry", None)
+        enabled = bool(getattr(retry_cfg, "enabled", False))
+        max_attempts = max(1, int(getattr(retry_cfg, "max_attempts", 1)))
+        delay_ms = max(0, int(getattr(retry_cfg, "delay_ms", 0)))
+        retry_reason_codes = {
+            (code or "").strip().casefold()
+            for code in list(getattr(retry_cfg, "retry_reason_codes", []) or [])
+            if (code or "").strip()
+        }
+
+        if not enabled:
+            max_attempts = 1
+        if not retry_reason_codes:
+            retry_reason_codes = {"locator_error"}
+
+        attempts_used = 0
+        validation: ValidationResult | None = None
+        while attempts_used < max_attempts:
+            attempts_used += 1
+            validation = await ctx.validator.validate_candidate(
+                inp.page,
+                candidate.locator,
+                inp.field_type,
+                inp.intent,
+                strict_single_match=inp.hints.strict_single_match if inp.hints else None,
+            )
+            if validation.ok:
+                break
+            if not self._should_retry_validation(validation, retry_reason_codes):
+                break
+            if attempts_used >= max_attempts:
+                break
+            if delay_ms > 0:
+                await asyncio.sleep(delay_ms / 1000.0)
+
+        if validation is None:
+            validation = ValidationResult.fail(["retry_validation_unavailable"])
+        return validation, attempts_used
+
+    @staticmethod
+    def _should_retry_validation(validation: ValidationResult, retry_reason_codes: set[str]) -> bool:
+        if validation.ok:
+            return False
+        reason_codes = {(reason or "").strip().casefold() for reason in validation.reason_codes}
+        return bool(reason_codes & retry_reason_codes)
+
     def _metadata_candidates(self, meta: ElementMeta | None, field_type: str) -> list[CandidateSpec]:
         if meta is None:
             return []
         field_type_norm = (field_type or "").strip().casefold()
         out: list[CandidateSpec] = []
+        score_by_strategy: dict[str, float] = {
+            "metadata.last_good": 1.0,
+            "metadata.robust": 0.95,
+            "metadata.robust_xpath": 0.93,
+            "metadata.robust_css": 0.92,
+            "metadata.live_xpath": 0.85,
+            "metadata.live_css": 0.84,
+        }
+
         if meta.last_good_locator:
             if not self._is_weak_metadata_locator(meta.last_good_locator, field_type_norm):
                 out.append(
@@ -193,6 +328,7 @@ class HealingService:
                         strategy_id="metadata.last_good",
                         locator=meta.last_good_locator,
                         stage="metadata",
+                        score=score_by_strategy["metadata.last_good"],
                     )
                 )
         if meta.robust_locator:
@@ -202,6 +338,7 @@ class HealingService:
                         strategy_id="metadata.robust",
                         locator=meta.robust_locator,
                         stage="metadata",
+                        score=score_by_strategy["metadata.robust"],
                     )
                 )
         for key in ("robust_xpath", "robust_css", "live_xpath", "live_css"):
@@ -215,6 +352,7 @@ class HealingService:
                     strategy_id=f"metadata.{key}",
                     locator=locator,
                     stage="metadata",
+                    score=score_by_strategy.get(f"metadata.{key}", 0.80),
                 )
             )
         return out
@@ -233,6 +371,13 @@ class HealingService:
         target_signature = meta.signature
 
         primary = ctx.signature_extractor.build_robust_locator(target_signature, attr_priority)
+        primary_graph_score = self._graph_context_score(
+            inp=inp,
+            target_signature=target_signature,
+            candidate_signature=target_signature,
+            neighbor_field_type=inp.field_type,
+            neighbor_element_name=inp.element_name,
+        )
         candidates.append(
             (
                 CandidateSpec(
@@ -240,6 +385,7 @@ class HealingService:
                     locator=primary,
                     stage="signature",
                     score=1.0,
+                    details={"graph_context_score": round(primary_graph_score, 4)},
                 ),
                 1.0,
             )
@@ -257,8 +403,17 @@ class HealingService:
             if neighbor.element_name == inp.element_name:
                 continue
             sim = ctx.similarity.score(target_signature, neighbor.signature)
+            graph_score = self._graph_context_score(
+                inp=inp,
+                target_signature=target_signature,
+                candidate_signature=neighbor.signature,
+                neighbor_field_type=neighbor.field_type,
+                neighbor_element_name=neighbor.element_name,
+            )
+            combined_score = (0.70 * sim.score) + (0.30 * graph_score)
             threshold = inp.hints.threshold if inp.hints and inp.hints.threshold is not None else ctx.config.similarity_threshold
-            if not ctx.similarity.is_similar(sim, threshold=threshold):
+            effective_score = max(sim.score, combined_score)
+            if effective_score < threshold:
                 continue
             locator = ctx.signature_extractor.build_robust_locator(neighbor.signature, attr_priority)
             candidates.append(
@@ -267,15 +422,102 @@ class HealingService:
                         strategy_id=f"signature.neighbor:{neighbor.element_name}",
                         locator=locator,
                         stage="signature",
-                        score=sim.score,
-                        details={"similarity": sim.breakdown},
+                        score=round(effective_score, 6),
+                        details={
+                            "similarity": sim.breakdown,
+                            "similarity_score": round(sim.score, 6),
+                            "graph_context_score": round(graph_score, 6),
+                            "combined_score": round(combined_score, 6),
+                        },
                     ),
-                    sim.score,
+                    effective_score,
                 )
             )
 
         ordered = sorted(candidates, key=lambda item: item[1], reverse=True)
         return [candidate for candidate, _ in ordered]
+
+    def _graph_context_score(
+        self,
+        inp: BuildInput,
+        target_signature: Any,
+        candidate_signature: Any,
+        neighbor_field_type: str,
+        neighbor_element_name: str,
+    ) -> float:
+        tag_score = 1.0 if normalize_text(target_signature.tag) == normalize_text(candidate_signature.tag) else 0.0
+        container_score = self._container_overlap_score(
+            list(getattr(target_signature, "container_path", []) or []),
+            list(getattr(candidate_signature, "container_path", []) or []),
+        )
+        anchor_score = self._anchor_text_score(
+            inp=inp,
+            candidate_text=getattr(candidate_signature, "short_text", "") or "",
+            neighbor_element_name=neighbor_element_name,
+        )
+        text_similarity = fuzzy_ratio(
+            getattr(target_signature, "short_text", "") or "",
+            getattr(candidate_signature, "short_text", "") or "",
+        )
+        field_score = self._field_type_compatibility(inp.field_type, neighbor_field_type)
+
+        score = (
+            0.25 * tag_score
+            + 0.30 * container_score
+            + 0.25 * anchor_score
+            + 0.10 * text_similarity
+            + 0.10 * field_score
+        )
+        return min(max(score, 0.0), 1.0)
+
+    @staticmethod
+    def _container_overlap_score(left: list[str], right: list[str]) -> float:
+        left_norm = {normalize_text(item) for item in left if normalize_text(item)}
+        right_norm = {normalize_text(item) for item in right if normalize_text(item)}
+        if not left_norm and not right_norm:
+            return 0.0
+        union = left_norm | right_norm
+        if not union:
+            return 0.0
+        return len(left_norm & right_norm) / len(union)
+
+    def _anchor_text_score(self, inp: BuildInput, candidate_text: str, neighbor_element_name: str) -> float:
+        anchors: list[str] = []
+        if inp.intent.label:
+            anchors.append(inp.intent.label)
+        if inp.intent.text:
+            anchors.append(inp.intent.text)
+        for key in ("label", "label_text", "text", "name"):
+            value = inp.vars.get(key)
+            if value:
+                anchors.append(value)
+
+        anchors = [token for token in anchors if normalize_text(token)]
+        if not anchors:
+            return 0.0
+
+        element_name_score = max(fuzzy_ratio(anchor, neighbor_element_name) for anchor in anchors)
+        text_score = max(fuzzy_ratio(anchor, candidate_text) for anchor in anchors)
+        return max(text_score, 0.6 * element_name_score)
+
+    @staticmethod
+    def _field_type_compatibility(expected: str, actual: str) -> float:
+        expected_norm = normalize_text(expected)
+        actual_norm = normalize_text(actual)
+        if expected_norm == actual_norm:
+            return 1.0
+
+        textish = {"text", "label", "generic"}
+        inputish = {"textbox", "input", "dropdown", "combobox"}
+        clickable = {"button", "link"}
+
+        if expected_norm in textish and actual_norm in textish:
+            return 0.85
+        if expected_norm in inputish and actual_norm in inputish:
+            return 0.80
+        if expected_norm in clickable and actual_norm in clickable:
+            return 0.75
+        return 0.35
 
     async def _dom_mining_candidates(self, ctx: StrategyContext, inp: BuildInput) -> list[CandidateSpec]:
         html = await ctx.dom_snapshotter.capture(inp.page)
@@ -533,7 +775,7 @@ class HealingService:
         signature: Any,
     ) -> dict[str, Any]:
         uniqueness_score = self._uniqueness_score(validation)
-        stability_score = self._stability_score(locator, signature)
+        stability_score = self._stability_score(locator, signature, validation)
         weighted = [
             ("uniqueness", uniqueness_score, 0.4),
             ("stability", stability_score, 0.4),
@@ -562,7 +804,12 @@ class HealingService:
         matched = max(validation.matched_count, 1)
         return min(1.0, 1.0 / matched)
 
-    def _stability_score(self, locator: LocatorSpec, signature: Any) -> float:
+    def _stability_score(
+        self,
+        locator: LocatorSpec,
+        signature: Any,
+        validation: ValidationResult | None = None,
+    ) -> float:
         base_map = {
             "role": 0.90,
             "css": 0.78,
@@ -572,7 +819,21 @@ class HealingService:
         }
         score = base_map.get(locator.kind, 0.60)
         value = (locator.value or "").strip().lower()
-        stable_tokens = ("data-testid", "aria-label", "formcontrolname", "name=", "col-id", "aria-colindex")
+        stable_tokens = (
+            "data-testid",
+            "aria-label",
+            "aria-labelledby",
+            "formcontrolname",
+            "name=",
+            "col-id",
+            "aria-colindex",
+            "@placeholder",
+            "[placeholder",
+            "@type=",
+            "[type=",
+            "@role=",
+            "[role=",
+        )
         if any(token in value for token in stable_tokens):
             score += 0.10
         if locator.kind == "css":
@@ -581,14 +842,26 @@ class HealingService:
             if value in {"*", "html", "body", "div", "span"}:
                 score -= 0.35
         if locator.kind == "xpath":
-            if value.startswith("/"):
+            is_absolute_xpath = value.startswith("/") and not value.startswith("//")
+            if is_absolute_xpath:
                 score -= 0.18
             if "[1]" in value and "@id" not in value and "@data-testid" not in value:
                 score -= 0.06
-            if "@id=" in value or "@data-testid" in value or "@name=" in value:
+            if (
+                "@id=" in value
+                or "@data-testid" in value
+                or "@name=" in value
+                or "@placeholder" in value
+                or "@type=" in value
+                or "@role=" in value
+            ):
                 score += 0.08
-        if locator.kind == "text" and len(value) < 3:
-            score -= 0.10
+        if locator.kind == "text":
+            if len(value) < 3:
+                score -= 0.10
+            exact = bool((locator.options or {}).get("exact"))
+            if validation and validation.ok and validation.matched_count == 1 and exact:
+                score += 0.10
 
         stable_attr_count = len(getattr(signature, "stable_attrs", {}) or {})
         if stable_attr_count > 0:
