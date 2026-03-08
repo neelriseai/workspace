@@ -7,6 +7,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from xpath_healer.utils.env import load_env_into_process
+
 
 def _env_bool(name: str, default: bool) -> bool:
     value = os.getenv(name)
@@ -41,6 +43,7 @@ class IntegrationSettings:
 
 
 def load_settings(config_path: Path | None = None) -> IntegrationSettings:
+    load_env_into_process(include_env=True, include_example=True, override=False)
     config_path = config_path or Path(__file__).with_name("config.json")
     with config_path.open("r", encoding="utf-8") as fh:
         raw = json.load(fh)

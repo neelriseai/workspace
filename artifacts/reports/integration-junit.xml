@@ -1,4 +1,196 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="4" time="26.065" timestamp="2026-03-08T00:24:45.913694+05:30" hostname="Satyaom"><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc1_textbox_form_fill_and_submit" time="7.947" /><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc2_checkbox_home_icon_select_and_message_verify" time="5.222" /><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc3_webtables_first_row_verification" time="6.002" /><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc4_raw_fallback_xpath_fails_without_healer" time="6.822"><failure message="Failed: Intentional failure: raw fallback xpath did not resolve any element: //xh-never-match[@id='raw_xpath_negative-broken']">fixturefunc = &lt;function report_and_logs_should_show_xpath_failure_reason at 0x0000028CDE9B2090&gt;
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="4" time="50.225" timestamp="2026-03-08T06:30:01.813017+05:30" hostname="Satyaom"><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc1_textbox_form_fill_and_submit" time="24.493"><failure message="AssertionError: First stage should be fallback for full_name&#10;assert 'rag' == 'fallback'&#10;  &#10;  - fallback&#10;  + rag">fixturefunc = &lt;function verify_trace_stages at 0x000002633BEAE6C0&gt;
+request = &lt;FixtureRequest for &lt;Function test_tc1_textbox_form_fill_and_submit&gt;&gt;
+kwargs = {'healer': &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x000002633D134D70&gt;, 'scenario_state': {'current_page'...7, 'needs_more_context': True, 'llm_red_flags': ['low_confidence'], 'grounded_in_context': True})], error=None), ...}}}
+
+    def call_fixture_func(
+        fixturefunc: _FixtureFunc[FixtureValue], request: FixtureRequest, kwargs
+    ) -&gt; FixtureValue:
+        if inspect.isgeneratorfunction(fixturefunc):
+            fixturefunc = cast(Callable[..., Generator[FixtureValue]], fixturefunc)
+            generator = fixturefunc(**kwargs)
+            try:
+                fixture_result = next(generator)
+            except StopIteration:
+                raise ValueError(f"{request.fixturename} did not yield a value") from None
+            finalizer = functools.partial(_teardown_yield_fixture, fixturefunc, generator)
+            request.addfinalizer(finalizer)
+        else:
+            fixturefunc = cast(Callable[..., FixtureValue], fixturefunc)
+&gt;           fixture_result = fixturefunc(**kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^
+
+..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\fixtures.py:915: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+scenario_state = {'current_page': 'text-box', 'healed': [{'element_name': 'full_name', 'locator_kind': 'role', 'locator_value': "textbo...37, 'needs_more_context': True, 'llm_red_flags': ['low_confidence'], 'grounded_in_context': True})], error=None), ...}}
+healer = &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x000002633D134D70&gt;
+
+    @then("trace logs should contain expected healing stages")
+    def verify_trace_stages(scenario_state: dict[str, Any], healer: XPathHealerFacade) -&gt; None:
+        recovered_by_element: dict[str, Recovered] = scenario_state["recovered"]
+        assert recovered_by_element, "No healed elements captured for trace verification."
+    
+        for element_name, recovered in recovered_by_element.items():
+            trace = recovered.trace
+            assert trace, f"Trace is empty for {element_name}"
+&gt;           assert trace[0].stage == "fallback", f"First stage should be fallback for {element_name}"
+E           AssertionError: First stage should be fallback for full_name
+E           assert 'rag' == 'fallback'
+E             
+E             - fallback
+E             + rag
+
+tests\integration\test_demo_qa_healing_bdd.py:549: AssertionError</failure></testcase><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc2_checkbox_home_icon_select_and_message_verify" time="9.606"><failure message="AssertionError: First stage should be fallback for home_checkbox_icon&#10;assert 'rag' == 'fallback'&#10;  &#10;  - fallback&#10;  + rag">fixturefunc = &lt;function verify_trace_stages at 0x000002633BEAE6C0&gt;
+request = &lt;FixtureRequest for &lt;Function test_tc2_checkbox_home_icon_select_and_message_verify&gt;&gt;
+kwargs = {'healer': &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x000002635761A0D0&gt;, 'scenario_state': {'current_page'...: 0.36, 'needs_more_context': True, 'llm_red_flags': ['low_confidence'], 'grounded_in_context': True})], error=None)}}}
+
+    def call_fixture_func(
+        fixturefunc: _FixtureFunc[FixtureValue], request: FixtureRequest, kwargs
+    ) -&gt; FixtureValue:
+        if inspect.isgeneratorfunction(fixturefunc):
+            fixturefunc = cast(Callable[..., Generator[FixtureValue]], fixturefunc)
+            generator = fixturefunc(**kwargs)
+            try:
+                fixture_result = next(generator)
+            except StopIteration:
+                raise ValueError(f"{request.fixturename} did not yield a value") from None
+            finalizer = functools.partial(_teardown_yield_fixture, fixturefunc, generator)
+            request.addfinalizer(finalizer)
+        else:
+            fixturefunc = cast(Callable[..., FixtureValue], fixturefunc)
+&gt;           fixture_result = fixturefunc(**kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^
+
+..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\fixtures.py:915: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+scenario_state = {'current_page': 'checkbox', 'healed': [{'element_name': 'home_checkbox_icon', 'locator_kind': 'xpath', 'locator_value...': 0.36, 'needs_more_context': True, 'llm_red_flags': ['low_confidence'], 'grounded_in_context': True})], error=None)}}
+healer = &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x000002635761A0D0&gt;
+
+    @then("trace logs should contain expected healing stages")
+    def verify_trace_stages(scenario_state: dict[str, Any], healer: XPathHealerFacade) -&gt; None:
+        recovered_by_element: dict[str, Recovered] = scenario_state["recovered"]
+        assert recovered_by_element, "No healed elements captured for trace verification."
+    
+        for element_name, recovered in recovered_by_element.items():
+            trace = recovered.trace
+            assert trace, f"Trace is empty for {element_name}"
+&gt;           assert trace[0].stage == "fallback", f"First stage should be fallback for {element_name}"
+E           AssertionError: First stage should be fallback for home_checkbox_icon
+E           assert 'rag' == 'fallback'
+E             
+E             - fallback
+E             + rag
+
+tests\integration\test_demo_qa_healing_bdd.py:549: AssertionError</failure></testcase><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc3_webtables_first_row_verification" time="10.455"><failure message="AssertionError: Healing failed for row1_first_name: {'status': 'failed', 'correlation_id': 'bc48bc49b9cb49dab9ea26f21af44bf0', 'locator_spec': None, 'metadata': None, 'strategy_id': None, 'trace': [{'stage': 'rag', 'strategy_id': 'rag_suggest', 'status': 'fail', 'candidate_count': 1, 'selected_locator': {'kind': 'text', 'value': 'Cierra', 'options': {}, 'scope': None}, 'score': 0.8, 'validation': {'ok': False, 'reason_codes': ['multiple_matches'], 'matched_count': 2, 'chosen_index': None, 'score': None, 'details': {}}, 'duration_ms': 11.298400000669062, 'details': {'source': 'llm', 'rag_pass': 'light', 'deep_graph': True, 'llm_reason': &quot;The element has text 'Cierra', matches field_type:text, and is the top reranked candidate. No evidence of ambiguity in the provided context.&quot;, 'llm_confidence': 0.8, 'grounded_in_context': True}}, {'stage': 'rag', 'strategy_id': 'rag_summary', 'status': 'fail', 'candidate_count': 1, 'selected_locator': None, 'score': None, 'validation': None, 'duration_ms': None, 'details': {'reason': 'no_valid_candidate'}}, {'stage': 'rag', 'strategy_id': 'rag_suggest', 'status': 'fail', 'candidate_count': 1, 'selected_locator': {'kind': 'text', 'value': 'Cierra', 'options': {}, 'scope': None}, 'score': 0.85, 'validation': {'ok': False, 'reason_codes': ['multiple_matches'], 'matched_count': 2, 'chosen_index': None, 'score': None, 'details': {}}, 'duration_ms': 9.34290001168847, 'details': {'source': 'llm', 'rag_pass': 'deep_1', 'deep_graph': True, 'llm_reason': &quot;The element has text 'Cierra', matches the field type 'text', and is associated with the 'row1_first_name' context. No more stable attributes or unique roles are available, but the text is distinctive in the provided context.&quot;, 'llm_confidence': 0.85, 'grounded_in_context': True}}, {'stage': 'rag', 'strategy_id': 'rag_summary', 'status': 'fail', 'candidate_count': 1, 'selected_locator': None, 'score': None, 'validation': None, 'duration_ms': None, 'details': {'reason': 'no_valid_candidate'}}], 'error': 'All healing stages failed to produce a valid locator.'}&#10;assert 'failed' == 'success'&#10;  &#10;  - success&#10;  + failed">fixturefunc = &lt;function verify_row_first_name at 0x000002633BEADBC0&gt;
+request = &lt;FixtureRequest for &lt;Function test_tc3_webtables_first_row_verification&gt;&gt;
+kwargs = {'first_name': 'Cierra', 'healer': &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x0000026358AB0550&gt;, 'integrat..., screenshot_on_failure=True, screenshot_each_step=True, video_each_test=True, video_width=640, video_height=360), ...}
+
+    def call_fixture_func(
+        fixturefunc: _FixtureFunc[FixtureValue], request: FixtureRequest, kwargs
+    ) -&gt; FixtureValue:
+        if inspect.isgeneratorfunction(fixturefunc):
+            fixturefunc = cast(Callable[..., Generator[FixtureValue]], fixturefunc)
+            generator = fixturefunc(**kwargs)
+            try:
+                fixture_result = next(generator)
+            except StopIteration:
+                raise ValueError(f"{request.fixturename} did not yield a value") from None
+            finalizer = functools.partial(_teardown_yield_fixture, fixturefunc, generator)
+            request.addfinalizer(finalizer)
+        else:
+            fixturefunc = cast(Callable[..., FixtureValue], fixturefunc)
+&gt;           fixture_result = fixturefunc(**kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^
+
+..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\fixtures.py:915: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\integration\test_demo_qa_healing_bdd.py:432: in verify_row_first_name
+    first_name_locator = _heal(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+runtime = AsyncRuntime(loop=&lt;ProactorEventLoop running=False closed=False debug=False&gt;)
+state = {'current_page': 'webtables', 'healed': [], 'locators': {}, 'recovered': {}}
+page = &lt;Page url='https://demo-qa-app.azurewebsites.net/webtables'&gt;
+healer = &lt;xpath_healer.api.facade.XPathHealerFacade object at 0x0000026358AB0550&gt;
+integration_logger = &lt;Logger xpath_healer.integration (INFO)&gt;
+integration_settings = IntegrationSettings(base_url='https://demo-qa-app.azurewebsites.net', browser_engine='chromium', browser_channel=None,...t=True, screenshot_on_failure=True, screenshot_each_step=True, video_each_test=True, video_width=640, video_height=360)
+page_name = 'webtables', element_name = 'row1_first_name', field_type = 'text'
+vars_map = {'allow_position': 'true', 'match_mode': 'exact', 'occurrence': '0', 'strict_single_match': 'false', ...}
+
+    def _heal(
+        runtime: AsyncRuntime,
+        state: dict[str, Any],
+        page: Page,
+        healer: XPathHealerFacade,
+        integration_logger: logging.Logger,
+        integration_settings: IntegrationSettings,
+        page_name: str,
+        element_name: str,
+        field_type: str,
+        vars_map: dict[str, str],
+    ) -&gt; Any:
+        fallback = _broken_fallback(element_name)
+        recovered: Recovered = runtime.run(
+            healer.recover_locator(
+                page=page,
+                app_id=APP_ID,
+                page_name=page_name,
+                element_name=element_name,
+                field_type=field_type,
+                fallback=fallback,
+                vars=vars_map,
+            )
+        )
+        healed_value = recovered.locator_spec.value if recovered.locator_spec else None
+        healed_kind = recovered.locator_spec.kind if recovered.locator_spec else None
+        trace_summary = [f"{entry.stage}:{entry.strategy_id}:{entry.status}" for entry in recovered.trace]
+        quality = recovered.metadata.quality_metrics if recovered.metadata else {}
+        integration_logger.info(
+            "heal_attempt element=%s field_type=%s status=%s strategy=%s correlation_id=%s fallback_xpath=%s healed_kind=%s healed_value=%s uniqueness=%s stability=%s similarity=%s overall=%s",
+            element_name,
+            field_type,
+            recovered.status,
+            recovered.strategy_id,
+            recovered.correlation_id,
+            fallback.value,
+            healed_kind,
+            healed_value,
+            quality.get("uniqueness_score"),
+            quality.get("stability_score"),
+            quality.get("similarity_score"),
+            quality.get("overall_score"),
+        )
+        _append_jsonl(
+            integration_settings.healing_calls_jsonl,
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "app_id": APP_ID,
+                "page_name": page_name,
+                "element_name": element_name,
+                "field_type": field_type,
+                "fallback_xpath": fallback.value,
+                "status": recovered.status,
+                "strategy_id": recovered.strategy_id,
+                "correlation_id": recovered.correlation_id,
+                "healed_locator_kind": healed_kind,
+                "healed_locator_value": healed_value,
+                "uniqueness_score": quality.get("uniqueness_score"),
+                "stability_score": quality.get("stability_score"),
+                "similarity_score": quality.get("similarity_score"),
+                "overall_score": quality.get("overall_score"),
+                "matched_count": quality.get("matched_count"),
+                "trace": trace_summary,
+            },
+        )
+&gt;       assert recovered.status == "success", f"Healing failed for {element_name}: {recovered.to_dict()}"
+E       AssertionError: Healing failed for row1_first_name: {'status': 'failed', 'correlation_id': 'bc48bc49b9cb49dab9ea26f21af44bf0', 'locator_spec': None, 'metadata': None, 'strategy_id': None, 'trace': [{'stage': 'rag', 'strategy_id': 'rag_suggest', 'status': 'fail', 'candidate_count': 1, 'selected_locator': {'kind': 'text', 'value': 'Cierra', 'options': {}, 'scope': None}, 'score': 0.8, 'validation': {'ok': False, 'reason_codes': ['multiple_matches'], 'matched_count': 2, 'chosen_index': None, 'score': None, 'details': {}}, 'duration_ms': 11.298400000669062, 'details': {'source': 'llm', 'rag_pass': 'light', 'deep_graph': True, 'llm_reason': "The element has text 'Cierra', matches field_type:text, and is the top reranked candidate. No evidence of ambiguity in the provided context.", 'llm_confidence': 0.8, 'grounded_in_context': True}}, {'stage': 'rag', 'strategy_id': 'rag_summary', 'status': 'fail', 'candidate_count': 1, 'selected_locator': None, 'score': None, 'validation': None, 'duration_ms': None, 'details': {'reason': 'no_valid_candidate'}}, {'stage': 'rag', 'strategy_id': 'rag_suggest', 'status': 'fail', 'candidate_count': 1, 'selected_locator': {'kind': 'text', 'value': 'Cierra', 'options': {}, 'scope': None}, 'score': 0.85, 'validation': {'ok': False, 'reason_codes': ['multiple_matches'], 'matched_count': 2, 'chosen_index': None, 'score': None, 'details': {}}, 'duration_ms': 9.34290001168847, 'details': {'source': 'llm', 'rag_pass': 'deep_1', 'deep_graph': True, 'llm_reason': "The element has text 'Cierra', matches the field type 'text', and is associated with the 'row1_first_name' context. No more stable attributes or unique roles are available, but the text is distinctive in the provided context.", 'llm_confidence': 0.85, 'grounded_in_context': True}}, {'stage': 'rag', 'strategy_id': 'rag_summary', 'status': 'fail', 'candidate_count': 1, 'selected_locator': None, 'score': None, 'validation': None, 'duration_ms': None, 'details': {'reason': 'no_valid_candidate'}}], 'error': 'All healing stages failed to produce a valid locator.'}
+E       assert 'failed' == 'success'
+E         
+E         - success
+E         + failed
+
+tests\integration\test_demo_qa_healing_bdd.py:181: AssertionError</failure></testcase><testcase classname="tests.integration.test_demo_qa_healing_bdd" name="test_tc4_raw_fallback_xpath_fails_without_healer" time="5.482"><failure message="Failed: Intentional failure: raw fallback xpath did not resolve any element: //xh-never-match[@id='raw_xpath_negative-broken']">fixturefunc = &lt;function report_and_logs_should_show_xpath_failure_reason at 0x000002633BEAE400&gt;
 request = &lt;FixtureRequest for &lt;Function test_tc4_raw_fallback_xpath_fails_without_healer&gt;&gt;
 kwargs = {'integration_logger': &lt;Logger xpath_healer.integration (INFO)&gt;, 'integration_settings': IntegrationSettings(base_url=...age': 'text-box', 'healed': [], 'locators': {}, 'raw_xpath': "//xh-never-match[@id='raw_xpath_negative-broken']", ...}}
 
@@ -20,7 +212,7 @@ kwargs = {'integration_logger': &lt;Logger xpath_healer.integration (INFO)&gt;, 
                              ^^^^^^^^^^^^^^^^^^^^^
 
 ..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\_pytest\fixtures.py:915: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 scenario_state = {'current_page': 'text-box', 'healed': [], 'locators': {}, 'raw_xpath': "//xh-never-match[@id='raw_xpath_negative-broken']", ...}
 integration_logger = &lt;Logger xpath_healer.integration (INFO)&gt;

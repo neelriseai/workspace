@@ -3,7 +3,7 @@
   "page_name": "checkbox",
   "elements": {
     "home_checkbox_icon": {
-      "id": "060522e3-9323-4d0d-a5eb-ecdeddae78e2",
+      "id": "c69c46f2-0ae4-424c-ac7c-dfc936188db0",
       "app_id": "demo-qa-app",
       "page_name": "checkbox",
       "element_name": "home_checkbox_icon",
@@ -20,7 +20,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "span",
         "stable_attrs": {},
@@ -91,33 +91,81 @@
           "validated_proxy_checkbox",
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.36,
         "locator_kind": "xpath",
         "locator_value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:37.326813+00:00",
+            "timestamp": "2026-03-07T21:43:38.490016+00:00",
             "strategy_id": "checkbox_icon_by_label",
-            "overall_score": 0.784,
-            "stability_score": 0.46,
+            "overall_score": 0.856,
+            "stability_score": 0.64,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:58.402817+00:00",
-            "overall_score": 0.726,
+            "timestamp": "2026-03-07T23:06:36.591996+00:00",
             "strategy_id": "metadata.last_good",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:37.309193+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:49.384467+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:17.754466+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:24.170136+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:06.064961+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:34.914459+00:00",
+            "overall_score": 0.726,
+            "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
             "stability_score": 0.64,
             "similarity_score": 0.35
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:58.350563+00:00",
-      "success_count": 2,
-      "fail_count": 0
+      "last_seen": "2026-03-08T01:00:34.846537+00:00",
+      "success_count": 8,
+      "fail_count": 2
     }
   }
 }

@@ -3,14 +3,14 @@
   "page_name": "text_box",
   "elements": {
     "full_name": {
-      "id": "c6f597ef-2df6-4b91-925f-d0cffe7b59b5",
+      "id": "cf658b18-20cd-4e68-bb60-124b10e3f730",
       "app_id": "demo-qa-app",
       "page_name": "text_box",
       "element_name": "full_name",
       "field_type": "textbox",
       "last_good_locator": {
-        "kind": "xpath",
-        "value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "kind": "role",
+        "value": "textbox[name='Full Name']",
         "options": {},
         "scope": null
       },
@@ -20,7 +20,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "input",
         "stable_attrs": {
@@ -59,8 +59,8 @@
           "scope": null
         },
         "last_good": {
-          "kind": "xpath",
-          "value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+          "kind": "role",
+          "value": "textbox[name='Full Name']",
           "options": {},
           "scope": null
         },
@@ -85,44 +85,100 @@
       },
       "quality_metrics": {
         "uniqueness_score": 1.0,
-        "stability_score": 0.88,
+        "stability_score": 1.0,
         "similarity_score": 0.9,
-        "overall_score": 0.932,
+        "overall_score": 0.98,
         "matched_count": 1,
         "chosen_index": 0,
         "validation_reasons": [
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
-        "locator_kind": "xpath",
-        "locator_value": "//label[normalize-space()='Full Name' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'full name')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.35,
+        "locator_kind": "role",
+        "locator_value": "textbox[name='Full Name']",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:31.018241+00:00",
+            "timestamp": "2026-03-07T21:43:32.578929+00:00",
             "strategy_id": "axis_hint_field",
-            "overall_score": 0.808,
-            "stability_score": 0.52,
+            "overall_score": 0.952,
+            "stability_score": 0.88,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:51.638954+00:00",
-            "overall_score": 0.932,
+            "timestamp": "2026-03-07T23:06:30.257439+00:00",
             "strategy_id": "metadata.last_good",
-            "uniqueness_score": 1.0,
+            "overall_score": 0.932,
             "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-07T23:45:30.146967+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:25.458405+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:28.562727+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:08.511532+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:01.576009+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:59:42.917830+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.98,
+            "stability_score": 1.0,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:11.670584+00:00",
+            "overall_score": 0.98,
+            "strategy_id": "rag_suggest",
+            "uniqueness_score": 1.0,
+            "stability_score": 1.0,
             "similarity_score": 0.9
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:51.588885+00:00",
-      "success_count": 2,
-      "fail_count": 0
+      "last_seen": "2026-03-08T01:00:11.606537+00:00",
+      "success_count": 9,
+      "fail_count": 1
     },
     "email": {
-      "id": "c4825ca8-7f72-4e45-aa3b-2332ebca41bf",
+      "id": "a5f0e599-fd6d-4118-93ea-e2aa93da0ad9",
       "app_id": "demo-qa-app",
       "page_name": "text_box",
       "element_name": "email",
@@ -139,7 +195,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "input",
         "stable_attrs": {
@@ -212,36 +268,84 @@
         "validation_reasons": [
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.34,
         "locator_kind": "xpath",
         "locator_value": "//label[normalize-space()='Email' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'email')]/following::input[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:31.276606+00:00",
+            "timestamp": "2026-03-07T21:43:32.825754+00:00",
             "strategy_id": "axis_hint_field",
-            "overall_score": 0.808,
-            "stability_score": 0.52,
+            "overall_score": 0.952,
+            "stability_score": 0.88,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:51.967997+00:00",
-            "overall_score": 0.932,
+            "timestamp": "2026-03-07T23:06:30.532174+00:00",
             "strategy_id": "metadata.last_good",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:28.316285+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:30.701547+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:10.185050+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:05.578688+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:59:45.767640+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.932,
+            "stability_score": 0.88,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:15.479008+00:00",
+            "overall_score": 0.932,
+            "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
             "stability_score": 0.88,
             "similarity_score": 0.9
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:51.916948+00:00",
-      "success_count": 2,
-      "fail_count": 0
+      "last_seen": "2026-03-08T01:00:15.417703+00:00",
+      "success_count": 8,
+      "fail_count": 1
     },
     "current_address": {
-      "id": "5f0e32b1-3165-4c57-b7ba-e1ad059b1770",
+      "id": "d0efde41-6882-4ba7-8816-c0ab0a379236",
       "app_id": "demo-qa-app",
       "page_name": "text_box",
       "element_name": "current_address",
@@ -258,7 +362,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "textarea",
         "stable_attrs": {
@@ -330,36 +434,84 @@
         "validation_reasons": [
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.37,
         "locator_kind": "xpath",
         "locator_value": "//label[normalize-space()='Current Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'current address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:31.479053+00:00",
+            "timestamp": "2026-03-07T21:43:33.031135+00:00",
             "strategy_id": "axis_hint_field",
-            "overall_score": 0.796,
-            "stability_score": 0.49,
+            "overall_score": 0.94,
+            "stability_score": 0.85,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:52.286914+00:00",
-            "overall_score": 0.92,
+            "timestamp": "2026-03-07T23:06:30.808039+00:00",
             "strategy_id": "metadata.last_good",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:29.456048+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:33.219293+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:10.787167+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:08.500615+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:59:49.230781+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.92,
+            "stability_score": 0.85,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:19.062562+00:00",
+            "overall_score": 0.92,
+            "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
             "stability_score": 0.85,
             "similarity_score": 0.9
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:52.231620+00:00",
-      "success_count": 2,
+      "last_seen": "2026-03-08T01:00:18.979351+00:00",
+      "success_count": 8,
       "fail_count": 0
     },
     "permanent_address": {
-      "id": "8229a6ec-1485-436c-b3e2-6ac32e6041fc",
+      "id": "944b1187-cc7f-4629-8ff6-d31f471af773",
       "app_id": "demo-qa-app",
       "page_name": "text_box",
       "element_name": "permanent_address",
@@ -376,7 +528,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "textarea",
         "stable_attrs": {},
@@ -446,36 +598,84 @@
         "validation_reasons": [
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.37,
         "locator_kind": "xpath",
         "locator_value": "//label[normalize-space()='Permanent Address' or contains(translate(normalize-space(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'permanent address')]/following::textarea[not(ancestor::*[@role='grid' or contains(@class,'grid')])][1]",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:31.683273+00:00",
+            "timestamp": "2026-03-07T21:43:33.234560+00:00",
             "strategy_id": "axis_hint_field",
-            "overall_score": 0.784,
-            "stability_score": 0.46,
+            "overall_score": 0.928,
+            "stability_score": 0.82,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:52.516977+00:00",
-            "overall_score": 0.798,
+            "timestamp": "2026-03-07T23:06:31.021044+00:00",
             "strategy_id": "metadata.last_good",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:29.960332+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:36.005415+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:11.291291+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:10.905771+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:59:52.058396+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.798,
+            "stability_score": 0.82,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:22.351986+00:00",
+            "overall_score": 0.798,
+            "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
             "stability_score": 0.82,
             "similarity_score": 0.35
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:52.469860+00:00",
-      "success_count": 2,
+      "last_seen": "2026-03-08T01:00:22.292018+00:00",
+      "success_count": 8,
       "fail_count": 0
     },
     "submit": {
-      "id": "6e066319-c534-4698-bfa2-d0e5e7837599",
+      "id": "462c12c0-e9c5-446d-a1d0-fd3eeb34268e",
       "app_id": "demo-qa-app",
       "page_name": "text_box",
       "element_name": "submit",
@@ -483,10 +683,7 @@
       "last_good_locator": {
         "kind": "role",
         "value": "button",
-        "options": {
-          "name": "Submit",
-          "exact": true
-        },
+        "options": {},
         "scope": null
       },
       "robust_locator": {
@@ -495,7 +692,7 @@
         "options": {},
         "scope": null
       },
-      "strategy_id": "metadata.last_good",
+      "strategy_id": "rag_suggest",
       "signature": {
         "tag": "button",
         "stable_attrs": {
@@ -535,10 +732,7 @@
         "last_good": {
           "kind": "role",
           "value": "button",
-          "options": {
-            "name": "Submit",
-            "exact": true
-          },
+          "options": {},
           "scope": null
         },
         "live_xpath": {
@@ -573,14 +767,14 @@
         "validation_reasons": [
           "validated"
         ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
+        "strategy_id": "rag_suggest",
+        "strategy_score": 0.36,
         "locator_kind": "role",
         "locator_value": "button",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:32.108821+00:00",
+            "timestamp": "2026-03-07T21:43:33.640618+00:00",
             "strategy_id": "button_text_candidate",
             "overall_score": 0.972,
             "stability_score": 0.93,
@@ -588,17 +782,65 @@
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:54:52.973726+00:00",
-            "overall_score": 0.952,
+            "timestamp": "2026-03-07T23:06:31.401630+00:00",
             "strategy_id": "metadata.last_good",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:30.648555+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:41:38.473597+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:12.020577+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:58:13.863404+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:59:55.009207+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.952,
+            "stability_score": 0.93,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T01:00:25.155636+00:00",
+            "overall_score": 0.952,
+            "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
             "stability_score": 0.93,
             "similarity_score": 0.9
           }
         ]
       },
-      "last_seen": "2026-03-07T18:54:52.919965+00:00",
-      "success_count": 2,
+      "last_seen": "2026-03-08T01:00:25.093316+00:00",
+      "success_count": 8,
       "fail_count": 0
     }
   }

@@ -88,12 +88,14 @@ class PgVectorRetriever(Retriever):
                 WHERE embedding IS NOT NULL
                   AND ($2 = '' OR app_id=$2)
                   AND ($3 = '' OR page_name=$3)
+                  AND ($4 = '' OR coalesce(metadata->>'field_type','') = $4)
                 ORDER BY embedding <=> $1::vector
-                LIMIT $4
+                LIMIT $5
                 """,
                 vector_text,
                 self.app_id,
                 self.page_name,
+                self.field_type,
                 limit,
             )
         except Exception:

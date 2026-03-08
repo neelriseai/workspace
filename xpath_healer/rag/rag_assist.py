@@ -2,23 +2,45 @@
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 from xpath_healer.core.models import BuildInput, LocatorSpec
 from xpath_healer.rag.embedder import Embedder
 from xpath_healer.rag.llm import LLM
-from xpath_healer.rag.prompt_builder import build_prompt_payload
+from xpath_healer.rag.prompt_builder import build_dom_signature, build_prompt_payload
 from xpath_healer.rag.retriever import Retriever
 
 
 class RagAssist:
-    def __init__(self, embedder: Embedder, retriever: Retriever, llm: LLM) -> None:
+    def __init__(
+        self,
+        embedder: Embedder,
+        retriever: Retriever,
+        llm: LLM,
+        graph_deep_default: bool = False,
+        min_confidence_for_accept: float = 0.65,
+        prompt_top_n: int = 3,
+    ) -> None:
         self.embedder = embedder
         self.retriever = retriever
         self.llm = llm
+        self.graph_deep_default = bool(graph_deep_default)
+        self.min_confidence_for_accept = min(max(float(min_confidence_for_accept), 0.0), 1.0)
+        self.prompt_top_n = max(1, int(prompt_top_n))
+        self.last_telemetry: dict[str, Any] | None = None
 
-    async def suggest(self, inp: BuildInput, dom_snippet: str, top_k: int = 5) -> list[LocatorSpec]:
-        query = self._build_query(inp, dom_snippet)
+    async def suggest(
+        self,
+        inp: BuildInput,
+        dom_snippet: str,
+        top_k: int = 5,
+        deep_graph: bool | None = None,
+    ) -> list[LocatorSpec]:
+        use_deep_graph = self.graph_deep_default if deep_graph is None else bool(deep_graph)
+        dom_signature = build_dom_signature(dom_snippet, deep_graph=use_deep_graph)
+        query = self._build_query(inp, dom_signature)
         embedding = await self.embedder.embed_text(query)
         if hasattr(self.retriever, "set_query_context"):
             try:
@@ -31,26 +53,74 @@ class RagAssist:
                 pass
         retrieve_k = min(max(top_k * 20, 50), 200)
         raw_context = await self.retriever.retrieve(embedding, top_k=retrieve_k)
-        context = self._rerank_context(raw_context, top_n=max(3, min(5, top_k)))
-        payload = build_prompt_payload(inp=inp, dom_snippet=dom_snippet, context_candidates=context)
+        top_n = min(self.prompt_top_n, max(1, top_k))
+        context = self._rerank_context(raw_context, top_n=top_n, query_tokens=self._query_tokens(inp))
+        payload = build_prompt_payload(
+            inp=inp,
+            dom_snippet=dom_snippet,
+            context_candidates=context,
+            deep_graph=use_deep_graph,
+        )
+        payload_json = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
+        dsl_prompt = str(payload.get("dsl_prompt") or "")
+        context_json = json.dumps(payload.get("context") or [], ensure_ascii=True, separators=(",", ":"))
+        dom_sig = str(payload.get("dom_signature") or "")
+        self.last_telemetry = {
+            "raw_context_count": len(raw_context),
+            "prompt_context_count": len(context),
+            "retrieve_k": retrieve_k,
+            "top_k": int(top_k),
+            "prompt_top_n": int(top_n),
+            "query_chars": len(query),
+            "dom_signature_chars": len(dom_sig),
+            "dsl_prompt_chars": len(dsl_prompt),
+            "context_json_chars": len(context_json),
+            "payload_chars": len(payload_json),
+            "embedding_dims": len(embedding),
+        }
         rules = payload.setdefault("rules", {})
         rules["prefer_compact_dsl"] = True
         rules["max_candidates"] = max(1, min(5, top_k))
+        rules["min_confidence_for_accept"] = self.min_confidence_for_accept
         raw = await self.llm.suggest_locators(payload)
-        suggestions = self._parse_suggestions(raw)
+        allowed_context = self._allowed_context_keys(context)
+        suggestions = self._parse_suggestions(
+            raw,
+            allowed_context=allowed_context,
+            min_confidence_for_accept=self.min_confidence_for_accept,
+        )
         if top_k > 0:
             return suggestions[:top_k]
         return suggestions
 
     @staticmethod
-    def _build_query(inp: BuildInput, dom_snippet: str) -> str:
-        return (
-            f"page={inp.page_name}; element={inp.element_name}; field_type={inp.field_type}; "
-            f"vars={inp.vars}; dom={dom_snippet[:2000]}"
-        )
+    def _build_query(inp: BuildInput, dom_signature: str) -> str:
+        tags = []
+        for key in ("id", "data-testid", "name", "role", "type", "placeholder"):
+            value = str(inp.vars.get(key) or "").strip()
+            if value:
+                tags.append(f"{key}={value}")
+        label = str(inp.intent.label or inp.intent.text or "").strip()
+        parent = str(inp.vars.get("parent") or inp.vars.get("container") or inp.page_name).strip()
+        parts = [
+            f"app={inp.app_id}",
+            f"page={inp.page_name}",
+            f"element={inp.element_name}",
+            f"field_type={inp.field_type}",
+            f'label="{label}"' if label else "",
+            f"parent={parent}" if parent else "",
+            ("attrs=" + " ".join(tags)) if tags else "",
+            f"dom_sig={dom_signature[:320]}",
+        ]
+        return " | ".join(part for part in parts if part)
 
     @staticmethod
-    def _rerank_context(context: list[dict[str, Any]], top_n: int) -> list[dict[str, Any]]:
+    def _rerank_context(
+        context: list[dict[str, Any]],
+        top_n: int,
+        query_tokens: set[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        tokens = {item.casefold() for item in (query_tokens or set()) if item}
         scored: list[tuple[float, int, dict[str, Any]]] = []
         for idx, item in enumerate(context):
             if not isinstance(item, dict):
@@ -60,47 +130,261 @@ class RagAssist:
             quality = item.get("quality_metrics") if isinstance(item.get("quality_metrics"), dict) else {}
             stability = float(item.get("stability_score") or quality.get("stability_score") or 0.0)
             uniqueness = float(item.get("uniqueness_score") or quality.get("uniqueness_score") or 0.0)
+            token_overlap = RagAssist._token_overlap(tokens, item)
             rerank = (
-                0.45 * vector_similarity
-                + 0.25 * structural_similarity
+                0.40 * vector_similarity
+                + 0.22 * structural_similarity
                 + 0.20 * stability
                 + 0.10 * uniqueness
+                + 0.08 * token_overlap
             )
             enriched = dict(item)
             enriched["rerank_score"] = round(rerank, 6)
+            enriched["token_overlap"] = round(token_overlap, 6)
             scored.append((rerank, -idx, enriched))
 
         scored.sort(reverse=True)
         return [entry for _, _, entry in scored[: max(1, top_n)]]
 
     @staticmethod
-    def _parse_suggestions(raw: list[dict[str, Any]]) -> list[LocatorSpec]:
-        out: list[LocatorSpec] = []
-        seen: set[str] = set()
-        for item in raw:
+    def _query_tokens(inp: BuildInput) -> set[str]:
+        out: set[str] = set()
+        seeds = [
+            inp.app_id,
+            inp.page_name,
+            inp.element_name,
+            inp.field_type,
+            inp.intent.label,
+            inp.intent.text,
+            inp.vars.get("id"),
+            inp.vars.get("data-testid"),
+            inp.vars.get("name"),
+            inp.vars.get("placeholder"),
+            inp.vars.get("role"),
+            inp.vars.get("type"),
+            inp.vars.get("container"),
+            inp.vars.get("parent"),
+            inp.vars.get("section"),
+        ]
+        for raw in seeds:
+            if not raw:
+                continue
+            text = str(raw).strip().casefold()
+            if not text:
+                continue
+            for token in re.split(r"[^a-z0-9:_-]+", text):
+                tok = token.strip()
+                if len(tok) >= 2:
+                    out.add(tok)
+        return out
+
+    @staticmethod
+    def _token_overlap(query_tokens: set[str], candidate: dict[str, Any]) -> float:
+        if not query_tokens:
+            return 0.0
+        candidate_tokens: set[str] = set()
+        for key in ("element_name", "field_type", "page_name", "source", "chunk_text"):
+            value = candidate.get(key)
+            if not value:
+                continue
+            for token in re.split(r"[^a-z0-9:_-]+", str(value).casefold()):
+                if len(token) >= 2:
+                    candidate_tokens.add(token)
+        metadata = candidate.get("metadata")
+        if isinstance(metadata, dict):
+            for key in ("field_type", "tag", "component_kind", "prompt_compact_text"):
+                value = metadata.get(key)
+                if not value:
+                    continue
+                for token in re.split(r"[^a-z0-9:_-]+", str(value).casefold()):
+                    if len(token) >= 2:
+                        candidate_tokens.add(token)
+            fp = metadata.get("fingerprint_tokens")
+            if isinstance(fp, list):
+                for item in fp:
+                    for token in re.split(r"[^a-z0-9:_-]+", str(item).casefold()):
+                        if len(token) >= 2:
+                            candidate_tokens.add(token)
+        if not candidate_tokens:
+            return 0.0
+        overlap = query_tokens & candidate_tokens
+        if not overlap:
+            return 0.0
+        return len(overlap) / float(len(query_tokens))
+
+    @staticmethod
+    def _allowed_context_keys(context: list[dict[str, Any]]) -> set[str]:
+        allowed: set[str] = set()
+        for item in context:
+            if not isinstance(item, dict):
+                continue
+            locator = item.get("locator")
+            if isinstance(locator, dict):
+                kind = str(locator.get("kind") or "").strip().casefold()
+                value = str(locator.get("value") or "").strip()
+                if kind and value:
+                    allowed.add(f"{kind}::{value}")
+        return allowed
+
+    @staticmethod
+    def _parse_suggestions(
+        raw: list[dict[str, Any]],
+        allowed_context: set[str] | None = None,
+        min_confidence_for_accept: float = 0.65,
+    ) -> list[LocatorSpec]:
+        allowed = {item.casefold() for item in (allowed_context or set()) if item}
+        dedup: dict[str, tuple[float, int, LocatorSpec]] = {}
+        for idx, item in enumerate(raw):
             try:
+                kind = str(item.get("kind") or "").strip()
+                value = str(item.get("value") or "").strip()
+                if not kind or not value:
+                    continue
+                confidence = RagAssist._coerce_confidence(item.get("confidence"))
+                reason = str(item.get("reason") or "").strip()
+                options = dict(item.get("options") or {})
+                needs_more_context = bool(item.get("needs_more_context") or options.pop("needs_more_context", False))
                 candidate = LocatorSpec(
-                    kind=str(item["kind"]),
-                    value=str(item["value"]),
-                    options=dict(item.get("options") or {}),
+                    kind=kind,
+                    value=value,
+                    options=options,
                     scope=LocatorSpec.from_dict(item["scope"]) if item.get("scope") else None,
                 )
                 if RagAssist._is_weak_locator(candidate):
                     continue
-                stable = candidate.stable_hash()
-                if stable in seen:
+
+                grounded = RagAssist._is_grounded(candidate, allowed)
+                red_flags = RagAssist._hallucination_red_flags(
+                    candidate,
+                    reason=reason,
+                    confidence=confidence,
+                    grounded=grounded,
+                    min_confidence=min_confidence_for_accept,
+                    has_context=bool(allowed),
+                )
+                if len(red_flags) >= 2:
                     continue
-                seen.add(stable)
-                out.append(candidate)
+
+                candidate.options["_llm_confidence"] = confidence
+                if reason:
+                    candidate.options["_llm_reason"] = reason[:240]
+                if needs_more_context:
+                    candidate.options["_llm_needs_more_context"] = True
+                if red_flags:
+                    candidate.options["_llm_red_flags"] = red_flags
+                if allowed:
+                    candidate.options["_grounded_in_context"] = grounded
+
+                stable = RagAssist._dedupe_key(candidate)
+                effective_confidence = confidence
+                if allowed and not grounded:
+                    effective_confidence = max(0.0, confidence - 0.10)
+                rank = (effective_confidence, -idx)
+                previous = dedup.get(stable)
+                if previous is None or rank > (previous[0], previous[1]):
+                    dedup[stable] = (effective_confidence, -idx, candidate)
             except Exception:
                 continue
-        return out
+
+        ordered = sorted(dedup.values(), key=lambda item: (item[0], item[1]), reverse=True)
+        return [candidate for _, _, candidate in ordered]
 
     @staticmethod
     def _is_weak_locator(locator: LocatorSpec) -> bool:
         value = (locator.value or "").strip().casefold()
         if locator.kind == "css":
-            return value in {"*", "html", "body", "div", "span"}
+            if value in {"*", "html", "body", "div", "span", "a", "p"}:
+                return True
+            if value.count(":nth-") >= 3 and "[" not in value and "#" not in value:
+                return True
+            return False
         if locator.kind == "xpath":
-            return value in {"//*", "//html", "/html[1]"}
+            if value in {"//*", "//html", "/html[1]"}:
+                return True
+            if value.startswith("/html"):
+                indexed_steps = re.findall(r"/[a-z0-9:_-]+\[\d+\]", value)
+                stable_attr = any(
+                    token in value
+                    for token in ("@id=", "@data-testid", "@name=", "@aria-label", "@role=", "@placeholder", "@type=")
+                )
+                if len(indexed_steps) >= 3 and not stable_attr:
+                    return True
+            return False
         return False
+
+    @staticmethod
+    def _is_grounded(locator: LocatorSpec, allowed_context: set[str]) -> bool:
+        if not allowed_context:
+            return True
+        if locator.kind not in {"css", "xpath"}:
+            return True
+        key = f"{locator.kind}::{locator.value}".casefold()
+        return key in allowed_context
+
+    @staticmethod
+    def _hallucination_red_flags(
+        locator: LocatorSpec,
+        reason: str,
+        confidence: float,
+        grounded: bool,
+        min_confidence: float,
+        has_context: bool,
+    ) -> list[str]:
+        flags: list[str] = []
+        if confidence < min_confidence:
+            flags.append("low_confidence")
+        if not reason:
+            flags.append("missing_reason")
+        elif not RagAssist._grounded_reason(reason):
+            flags.append("vague_reason")
+        if has_context and not grounded:
+            flags.append("outside_candidate_universe")
+        if RagAssist._is_unstable_pattern(locator):
+            flags.append("unstable_pattern")
+        return flags
+
+    @staticmethod
+    def _grounded_reason(reason: str) -> bool:
+        reason_norm = reason.casefold()
+        evidence_tokens = (
+            "id",
+            "data-testid",
+            "aria",
+            "name",
+            "placeholder",
+            "label",
+            "role",
+            "anchor",
+            "container",
+            "unique",
+        )
+        return any(token in reason_norm for token in evidence_tokens)
+
+    @staticmethod
+    def _is_unstable_pattern(locator: LocatorSpec) -> bool:
+        value = (locator.value or "").strip().casefold()
+        if locator.kind == "css":
+            if value in {"div", "span"}:
+                return True
+            if value.count(":nth-child(") >= 2:
+                return True
+            return False
+        if locator.kind == "xpath":
+            if value.startswith("/html"):
+                return True
+            if re.search(r"//[a-z0-9:_-]+\[\d+\](/[a-z0-9:_-]+\[\d+\]){2,}", value):
+                return True
+            return False
+        return False
+
+    @staticmethod
+    def _coerce_confidence(raw: Any) -> float:
+        try:
+            value = float(raw)
+        except Exception:
+            value = 0.5
+        return min(max(value, 0.0), 1.0)
+
+    @staticmethod
+    def _dedupe_key(locator: LocatorSpec) -> str:
+        return f"{locator.kind}::{locator.value}::{locator.scope.stable_hash() if locator.scope else ''}"

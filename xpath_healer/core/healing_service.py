@@ -8,6 +8,7 @@ from typing import Any
 
 from xpath_healer.core.builder import XPathBuilder
 from xpath_healer.core.context import StrategyContext
+from xpath_healer.core.fingerprint import FingerprintService
 from xpath_healer.core.models import (
     BuildInput,
     CandidateSpec,
@@ -26,6 +27,7 @@ from xpath_healer.utils.timing import timed
 class HealingService:
     def __init__(self, builder: XPathBuilder) -> None:
         self.builder = builder
+        self.fingerprint = FingerprintService()
 
     async def recover_locator(self, ctx: StrategyContext, inp: BuildInput) -> Recovered:
         correlation_id = inp.correlation_id or new_correlation_id()
@@ -50,62 +52,124 @@ class HealingService:
         )
 
         # 0) fallback
-        fallback_candidate = [CandidateSpec(strategy_id="fallback", locator=inp.fallback, stage="fallback")]
-        success = await self._evaluate_candidates(ctx, inp, fallback_candidate, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
-
-        # 1) metadata reuse
-        metadata_candidates = self._metadata_candidates(existing_meta, inp.field_type)
-        if metadata_candidates:
-            success = await self._evaluate_candidates_parallel(ctx, inp, metadata_candidates, trace)
+        if self._stage_enabled(ctx, "fallback"):
+            fallback_candidate = [CandidateSpec(strategy_id="fallback", locator=inp.fallback, stage="fallback")]
+            success = await self._evaluate_candidates(ctx, inp, fallback_candidate, trace)
             if success:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
+        # 1) metadata reuse
+        if self._stage_enabled(ctx, "metadata"):
+            metadata_candidates = self._metadata_candidates(existing_meta, inp.field_type)
+            if metadata_candidates:
+                success = await self._evaluate_candidates_parallel(ctx, inp, metadata_candidates, trace)
+                if success:
+                    candidate, validation = success
+                    return await self._on_success(ctx, inp, candidate, validation, trace)
+
         # 2) template / rule strategies
-        rule_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"rules"})
-        success = await self._evaluate_candidates_parallel(ctx, inp, rule_candidates, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
+        if self._stage_enabled(ctx, "rules"):
+            rule_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"rules"})
+            success = await self._evaluate_candidates_parallel(ctx, inp, rule_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 3) signature similarity candidates
-        signature_candidates = await self._signature_candidates(ctx, inp, existing_meta)
-        success = await self._evaluate_candidates(ctx, inp, signature_candidates, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
+        # 3) DOM fingerprint hashing / weighted matching
+        if self._stage_enabled(ctx, "fingerprint"):
+            fingerprint_candidates = await self._fingerprint_candidates(ctx, inp, existing_meta)
+            success = await self._evaluate_candidates_parallel(ctx, inp, fingerprint_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 4) first-run robust DOM mining
-        dom_candidates = await self._dom_mining_candidates(ctx, inp)
-        success = await self._evaluate_candidates(ctx, inp, dom_candidates, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
+        # 4) signature similarity candidates
+        if self._stage_enabled(ctx, "signature"):
+            signature_candidates = await self._signature_candidates(ctx, inp, existing_meta)
+            success = await self._evaluate_candidates(ctx, inp, signature_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 5) code defaults
-        default_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"defaults"})
-        success = await self._evaluate_candidates_parallel(ctx, inp, default_candidates, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
+        # 5) first-run robust DOM mining
+        if self._stage_enabled(ctx, "dom_mining"):
+            dom_candidates = await self._dom_mining_candidates(ctx, inp)
+            success = await self._evaluate_candidates(ctx, inp, dom_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 6) position fallback
-        position_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"position"})
-        success = await self._evaluate_candidates(ctx, inp, position_candidates, trace)
-        if success:
-            candidate, validation = success
-            return await self._on_success(ctx, inp, candidate, validation, trace)
+        # 6) code defaults
+        if self._stage_enabled(ctx, "defaults"):
+            default_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"defaults"})
+            success = await self._evaluate_candidates_parallel(ctx, inp, default_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 7) Optional RAG stage (final fallback)
-        if ctx.config.rag.enabled and ctx.rag_assist:
-            rag_candidates = await self._rag_candidates(ctx, inp)
+        # 7) position fallback
+        if self._stage_enabled(ctx, "position"):
+            position_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"position"})
+            success = await self._evaluate_candidates(ctx, inp, position_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
+
+        # 8) Optional RAG stage (final fallback)
+        if self._stage_enabled(ctx, "rag") and ctx.config.rag.enabled and ctx.rag_assist:
+            deep_default = bool(getattr(ctx.config.prompt, "graph_deep_default", False))
+            trace_start = len(trace)
+            rag_candidates = await self._rag_candidates(ctx, inp, deep_graph=deep_default, pass_name="light")
             success = await self._evaluate_candidates(ctx, inp, rag_candidates, trace)
             if success:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
+
+            deep_retry_enabled = bool(getattr(ctx.config.prompt, "graph_deep_retry_enabled", True))
+            deep_retry_max = int(getattr(ctx.config.prompt, "graph_deep_retry_max", 1))
+            min_confidence = float(getattr(ctx.config.llm, "min_confidence_for_accept", 0.65))
+            retry_reason = self._rag_retry_reason(
+                candidates=rag_candidates,
+                trace_entries=trace[trace_start:],
+                min_confidence=min_confidence,
+            )
+            deep_attempt = 0
+            while deep_retry_enabled and deep_attempt < deep_retry_max and retry_reason:
+                deep_attempt += 1
+                await self._log_stage_event(
+                    ctx,
+                    inp.correlation_id,
+                    stage="rag_retry",
+                    status="retry",
+                    inp=inp,
+                    details={
+                        "retry_type": "deep_graph",
+                        "attempt": deep_attempt,
+                        "reason": retry_reason,
+                    },
+                )
+                trace_start = len(trace)
+                rag_candidates = await self._rag_candidates(ctx, inp, deep_graph=True, pass_name=f"deep_{deep_attempt}")
+                success = await self._evaluate_candidates(ctx, inp, rag_candidates, trace)
+                if success:
+                    candidate, validation = success
+                    return await self._on_success(ctx, inp, candidate, validation, trace)
+                retry_reason = self._rag_retry_reason(
+                    candidates=rag_candidates,
+                    trace_entries=trace[trace_start:],
+                    min_confidence=min_confidence,
+                )
+
+            if retry_reason:
+                await self._log_stage_event(
+                    ctx,
+                    inp.correlation_id,
+                    stage="rag_hallucination",
+                    status="fail",
+                    inp=inp,
+                    details={"rag_hallucination_suspected": True, "reason": retry_reason},
+                )
 
         await self._persist_failure(ctx, inp, existing_meta)
         await self._log_stage_event(
@@ -307,6 +371,13 @@ class HealingService:
         reason_codes = {(reason or "").strip().casefold() for reason in validation.reason_codes}
         return bool(reason_codes & retry_reason_codes)
 
+    @staticmethod
+    def _stage_enabled(ctx: StrategyContext, stage_name: str) -> bool:
+        stages_cfg = getattr(ctx.config, "stages", None)
+        if stages_cfg is None:
+            return True
+        return bool(getattr(stages_cfg, stage_name, True))
+
     def _metadata_candidates(self, meta: ElementMeta | None, field_type: str) -> list[CandidateSpec]:
         if meta is None:
             return []
@@ -356,6 +427,95 @@ class HealingService:
                 )
             )
         return out
+
+    async def _fingerprint_candidates(
+        self,
+        ctx: StrategyContext,
+        inp: BuildInput,
+        meta: ElementMeta | None,
+    ) -> list[CandidateSpec]:
+        fp_cfg = getattr(ctx.config, "fingerprint", None)
+        if fp_cfg is not None and not getattr(fp_cfg, "enabled", True):
+            return []
+
+        expected_signature = meta.signature if meta and meta.signature else None
+        expected_fp = self.fingerprint.build(
+            expected_signature,
+            field_type=inp.field_type,
+            intent=inp.intent,
+            element_name=inp.element_name,
+        )
+        if not expected_fp.text:
+            return []
+
+        limit = int(getattr(fp_cfg, "candidate_limit", 25)) if fp_cfg is not None else 25
+        min_score = float(getattr(fp_cfg, "min_score", 0.75)) if fp_cfg is not None else 0.75
+        accept_score = float(getattr(fp_cfg, "accept_score", 0.90)) if fp_cfg is not None else 0.90
+
+        neighbors = await ctx.repository.find_candidates_by_page(
+            inp.app_id,
+            inp.page_name,
+            inp.field_type,
+            limit=limit,
+        )
+        if not neighbors:
+            neighbors = await ctx.repository.find_candidates_by_page(
+                inp.app_id,
+                inp.page_name,
+                "",
+                limit=limit,
+            )
+
+        out: list[CandidateSpec] = []
+        for neighbor in neighbors:
+            if neighbor.element_name == inp.element_name:
+                continue
+            if not neighbor.signature:
+                continue
+            candidate_fp = self.fingerprint.build(
+                neighbor.signature,
+                field_type=neighbor.field_type,
+                element_name=neighbor.element_name,
+            )
+            match = self.fingerprint.compare(expected_fp, candidate_fp)
+            if match.score < min_score:
+                continue
+            locator = self._fingerprint_locator(neighbor)
+            if locator is None:
+                continue
+            confidence = self.fingerprint.confidence_band(match.score)
+            strategy = "fingerprint.exact_hash" if match.exact_hash else f"fingerprint.{confidence}"
+            out.append(
+                CandidateSpec(
+                    strategy_id=f"{strategy}:{neighbor.element_name}",
+                    locator=locator,
+                    stage="fingerprint",
+                    score=round(match.score, 6),
+                    details={
+                        "confidence_band": confidence,
+                        "expected_hash": expected_fp.hash_value,
+                        "candidate_hash": candidate_fp.hash_value,
+                        "exact_hash": match.exact_hash,
+                        "accept_threshold": accept_score,
+                        "min_threshold": min_score,
+                        "fingerprint_breakdown": match.breakdown,
+                        "source_element": neighbor.element_name,
+                    },
+                )
+            )
+
+        out.sort(key=lambda item: item.score if item.score is not None else 0.0, reverse=True)
+        return out
+
+    @staticmethod
+    def _fingerprint_locator(meta: ElementMeta) -> LocatorSpec | None:
+        for key in ("robust_xpath", "robust_css", "live_xpath", "live_css", "last_good"):
+            locator = meta.locator_variants.get(key)
+            if locator:
+                return locator
+        if meta.robust_locator:
+            return meta.robust_locator
+        return meta.last_good_locator
 
     async def _signature_candidates(
         self,
@@ -528,15 +688,147 @@ class HealingService:
             for locator in locators
         ]
 
-    async def _rag_candidates(self, ctx: StrategyContext, inp: BuildInput) -> list[CandidateSpec]:
+    async def _rag_candidates(
+        self,
+        ctx: StrategyContext,
+        inp: BuildInput,
+        deep_graph: bool = False,
+        pass_name: str = "light",
+    ) -> list[CandidateSpec]:
         if not ctx.rag_assist:
             return []
         html = await ctx.dom_snapshotter.capture(inp.page)
-        suggestions = await ctx.rag_assist.suggest(inp, html, top_k=ctx.config.rag.top_k)
-        return [
-            CandidateSpec(strategy_id="rag_suggest", locator=locator, stage="rag", details={"source": "llm"})
-            for locator in suggestions
-        ]
+        try:
+            suggestions = await ctx.rag_assist.suggest(
+                inp,
+                html,
+                top_k=ctx.config.rag.top_k,
+                deep_graph=deep_graph,
+            )
+        except TypeError:
+            suggestions = await ctx.rag_assist.suggest(inp, html, top_k=ctx.config.rag.top_k)
+
+        telemetry = getattr(ctx.rag_assist, "last_telemetry", None)
+        if isinstance(telemetry, dict):
+            raw_ctx = int(telemetry.get("raw_context_count") or 0)
+            prompt_ctx = int(telemetry.get("prompt_context_count") or 0)
+            details = {
+                "rag_pass": pass_name,
+                "deep_graph": deep_graph,
+                "raw_context_count": raw_ctx,
+                "prompt_context_count": prompt_ctx,
+                "retrieve_k": int(telemetry.get("retrieve_k") or 0),
+                "top_k": int(telemetry.get("top_k") or 0),
+                "prompt_top_n": int(telemetry.get("prompt_top_n") or 0),
+                "query_chars": int(telemetry.get("query_chars") or 0),
+                "dom_signature_chars": int(telemetry.get("dom_signature_chars") or 0),
+                "dsl_prompt_chars": int(telemetry.get("dsl_prompt_chars") or 0),
+                "context_json_chars": int(telemetry.get("context_json_chars") or 0),
+                "payload_chars": int(telemetry.get("payload_chars") or 0),
+                "embedding_dims": int(telemetry.get("embedding_dims") or 0),
+            }
+            details["context_compression_ratio"] = (
+                round(prompt_ctx / raw_ctx, 4) if raw_ctx > 0 else None
+            )
+            await self._log_stage_event(
+                ctx,
+                inp.correlation_id,
+                stage="rag_context",
+                status="ok",
+                inp=inp,
+                details=details,
+            )
+        out: list[CandidateSpec] = []
+        for locator in suggestions:
+            options = dict(locator.options or {})
+            confidence_raw = options.pop("_llm_confidence", None)
+            reason = options.pop("_llm_reason", None)
+            needs_more_context = bool(options.pop("_llm_needs_more_context", False))
+            red_flags = list(options.pop("_llm_red_flags", []) or [])
+            grounded = options.pop("_grounded_in_context", None)
+            cleaned = LocatorSpec(
+                kind=locator.kind,
+                value=locator.value,
+                options=options,
+                scope=locator.scope,
+            )
+            confidence = self._coerce_stage_score(confidence_raw)
+            details: dict[str, Any] = {"source": "llm", "rag_pass": pass_name, "deep_graph": deep_graph}
+            if reason:
+                details["llm_reason"] = str(reason)
+            if confidence is not None:
+                details["llm_confidence"] = confidence
+            if needs_more_context:
+                details["needs_more_context"] = True
+            if red_flags:
+                details["llm_red_flags"] = red_flags
+            if grounded is not None:
+                details["grounded_in_context"] = bool(grounded)
+            out.append(
+                CandidateSpec(
+                    strategy_id="rag_suggest",
+                    locator=cleaned,
+                    stage="rag",
+                    score=confidence,
+                    details=details,
+                )
+            )
+        return out
+
+    def _rag_retry_reason(
+        self,
+        candidates: list[CandidateSpec],
+        trace_entries: list[StrategyTrace],
+        min_confidence: float,
+    ) -> str | None:
+        if not candidates:
+            return "no_valid_candidate_returned"
+
+        scores: list[float] = []
+        needs_more_context_hint = False
+        for candidate in candidates:
+            if candidate.score is not None:
+                scores.append(candidate.score)
+            if bool(candidate.details.get("needs_more_context")):
+                needs_more_context_hint = True
+        best_score = max(scores) if scores else 0.0
+        if best_score < min_confidence:
+            return "best_llm_confidence_below_threshold"
+        if needs_more_context_hint:
+            return "model_requested_more_context"
+        if len(scores) >= 2:
+            ranked = sorted(scores, reverse=True)
+            if (ranked[0] - ranked[1]) < 0.08:
+                return "high_candidate_entropy"
+
+        failure_reason_codes = self._rag_failure_reason_codes(trace_entries)
+        if not failure_reason_codes:
+            return None
+        hallucination_flags = {
+            "no_match",
+            "multiple_matches",
+            "not_visible",
+            "text_mismatch",
+            "type_mismatch_button",
+            "type_mismatch_link",
+            "type_mismatch_textbox",
+            "type_mismatch_dropdown",
+            "type_mismatch_toggle",
+            "type_mismatch_grid",
+        }
+        if failure_reason_codes & hallucination_flags:
+            return "validator_red_flags"
+        return "rag_candidates_failed_validation"
+
+    @staticmethod
+    def _rag_failure_reason_codes(trace_entries: list[StrategyTrace]) -> set[str]:
+        out: set[str] = set()
+        for entry in trace_entries:
+            if entry.stage != "rag" or entry.status != "fail":
+                continue
+            if entry.validation:
+                out.update((reason or "").strip().casefold() for reason in entry.validation.reason_codes)
+        return {reason for reason in out if reason}
 
     async def _on_success(
         self,
@@ -882,3 +1174,13 @@ class HealingService:
             return sim.score
         except Exception:
             return None
+
+    @staticmethod
+    def _coerce_stage_score(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            parsed = float(value)
+        except Exception:
+            return None
+        return min(max(parsed, 0.0), 1.0)

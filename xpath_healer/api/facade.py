@@ -214,11 +214,22 @@ class XPathHealerFacade:
             from xpath_healer.rag import OpenAIEmbedder, OpenAILLM, PgVectorRetriever, RagAssist
 
             embed_model = (os.getenv("XH_OPENAI_EMBED_MODEL") or "text-embedding-3-small").strip()
+            embed_dim_raw = (os.getenv("XH_OPENAI_EMBED_DIM") or "1536").strip()
+            embed_dim = int(embed_dim_raw) if embed_dim_raw else None
             chat_model = (os.getenv("XH_OPENAI_MODEL") or "gpt-4.1").strip()
-            embedder = OpenAIEmbedder(api_key=api_key, model=embed_model)
+            prompt_top_n_raw = (os.getenv("XH_RAG_PROMPT_TOP_N") or "3").strip()
+            prompt_top_n = max(1, int(prompt_top_n_raw or "3"))
+            embedder = OpenAIEmbedder(api_key=api_key, model=embed_model, dimensions=embed_dim)
             retriever = PgVectorRetriever(dsn=pg_dsn)
             llm = OpenAILLM(api_key=api_key, model=chat_model)
-            return RagAssist(embedder=embedder, retriever=retriever, llm=llm)
+            return RagAssist(
+                embedder=embedder,
+                retriever=retriever,
+                llm=llm,
+                graph_deep_default=self.config.prompt.graph_deep_default,
+                min_confidence_for_accept=self.config.llm.min_confidence_for_accept,
+                prompt_top_n=prompt_top_n,
+            )
         except Exception as exc:
             self.logger.warning("RAG disabled: could not initialize adapters (%s).", exc)
             return None

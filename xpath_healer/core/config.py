@@ -60,6 +60,40 @@ class RagConfig:
 
 
 @dataclass(slots=True)
+class PromptConfig:
+    graph_deep_default: bool = False
+    graph_deep_retry_enabled: bool = True
+    graph_deep_retry_max: int = 1
+
+
+@dataclass(slots=True)
+class LlmConfig:
+    min_confidence_for_accept: float = 0.65
+
+
+@dataclass(slots=True)
+class StageConfig:
+    profile: str = "full"
+    fallback: bool = True
+    metadata: bool = True
+    rules: bool = True
+    fingerprint: bool = True
+    signature: bool = True
+    dom_mining: bool = True
+    defaults: bool = True
+    position: bool = True
+    rag: bool = True
+
+
+@dataclass(slots=True)
+class FingerprintConfig:
+    enabled: bool = True
+    min_score: float = 0.75
+    accept_score: float = 0.90
+    candidate_limit: int = 25
+
+
+@dataclass(slots=True)
 class RetryConfig:
     enabled: bool = True
     max_attempts: int = 2
@@ -81,6 +115,10 @@ class HealerConfig:
     dom: DomSnapshotConfig = field(default_factory=DomSnapshotConfig)
     store: StoreConfig = field(default_factory=StoreConfig)
     rag: RagConfig = field(default_factory=RagConfig)
+    prompt: PromptConfig = field(default_factory=PromptConfig)
+    llm: LlmConfig = field(default_factory=LlmConfig)
+    stages: StageConfig = field(default_factory=StageConfig)
+    fingerprint: FingerprintConfig = field(default_factory=FingerprintConfig)
     retry: RetryConfig = field(default_factory=RetryConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
@@ -139,6 +177,57 @@ class HealerConfig:
         rag_top_k = os.getenv(f"{prefix}RAG_TOP_K")
         if rag_top_k:
             cfg.rag.top_k = int(rag_top_k)
+
+        cfg.prompt.graph_deep_default = coerce_bool(
+            os.getenv(f"{prefix}PROMPT_GRAPH_DEEP_DEFAULT"),
+            cfg.prompt.graph_deep_default,
+        )
+        cfg.prompt.graph_deep_retry_enabled = coerce_bool(
+            os.getenv(f"{prefix}PROMPT_GRAPH_DEEP_RETRY_ENABLED"),
+            cfg.prompt.graph_deep_retry_enabled,
+        )
+        graph_deep_retry_max = os.getenv(f"{prefix}PROMPT_GRAPH_DEEP_RETRY_MAX")
+        if graph_deep_retry_max:
+            cfg.prompt.graph_deep_retry_max = max(0, int(graph_deep_retry_max))
+
+        min_conf = os.getenv(f"{prefix}LLM_MIN_CONFIDENCE_FOR_ACCEPT")
+        if min_conf:
+            cfg.llm.min_confidence_for_accept = min(max(float(min_conf), 0.0), 1.0)
+
+        stage_profile = (os.getenv(f"{prefix}STAGE_PROFILE") or cfg.stages.profile).strip().casefold()
+        if stage_profile:
+            cfg.stages.profile = stage_profile
+        if cfg.stages.profile == "llm_only":
+            cfg.stages.fallback = False
+            cfg.stages.metadata = False
+            cfg.stages.rules = False
+            cfg.stages.fingerprint = False
+            cfg.stages.signature = False
+            cfg.stages.dom_mining = False
+            cfg.stages.defaults = False
+            cfg.stages.position = False
+            cfg.stages.rag = True
+
+        cfg.stages.fallback = coerce_bool(os.getenv(f"{prefix}STAGE_FALLBACK_ENABLED"), cfg.stages.fallback)
+        cfg.stages.metadata = coerce_bool(os.getenv(f"{prefix}STAGE_METADATA_ENABLED"), cfg.stages.metadata)
+        cfg.stages.rules = coerce_bool(os.getenv(f"{prefix}STAGE_RULES_ENABLED"), cfg.stages.rules)
+        cfg.stages.fingerprint = coerce_bool(os.getenv(f"{prefix}STAGE_FINGERPRINT_ENABLED"), cfg.stages.fingerprint)
+        cfg.stages.signature = coerce_bool(os.getenv(f"{prefix}STAGE_SIGNATURE_ENABLED"), cfg.stages.signature)
+        cfg.stages.dom_mining = coerce_bool(os.getenv(f"{prefix}STAGE_DOM_MINING_ENABLED"), cfg.stages.dom_mining)
+        cfg.stages.defaults = coerce_bool(os.getenv(f"{prefix}STAGE_DEFAULTS_ENABLED"), cfg.stages.defaults)
+        cfg.stages.position = coerce_bool(os.getenv(f"{prefix}STAGE_POSITION_ENABLED"), cfg.stages.position)
+        cfg.stages.rag = coerce_bool(os.getenv(f"{prefix}STAGE_RAG_ENABLED"), cfg.stages.rag)
+
+        cfg.fingerprint.enabled = coerce_bool(os.getenv(f"{prefix}FINGERPRINT_ENABLED"), cfg.fingerprint.enabled)
+        fp_min_score = os.getenv(f"{prefix}FINGERPRINT_MIN_SCORE")
+        if fp_min_score:
+            cfg.fingerprint.min_score = max(0.0, min(1.0, float(fp_min_score)))
+        fp_accept_score = os.getenv(f"{prefix}FINGERPRINT_ACCEPT_SCORE")
+        if fp_accept_score:
+            cfg.fingerprint.accept_score = max(0.0, min(1.0, float(fp_accept_score)))
+        fp_candidate_limit = os.getenv(f"{prefix}FINGERPRINT_CANDIDATE_LIMIT")
+        if fp_candidate_limit:
+            cfg.fingerprint.candidate_limit = max(1, int(fp_candidate_limit))
 
         cfg.retry.enabled = coerce_bool(os.getenv(f"{prefix}RETRY_ENABLED"), cfg.retry.enabled)
         retry_max_attempts = os.getenv(f"{prefix}RETRY_MAX_ATTEMPTS")

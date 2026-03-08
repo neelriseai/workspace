@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -14,6 +16,9 @@ try:
     import asyncpg  # type: ignore
 except Exception:  # pragma: no cover - dependency may be optional at runtime
     asyncpg = None  # type: ignore[assignment]
+
+
+LOGGER = logging.getLogger("xpath_healer.store.pg_repository")
 
 
 class PostgresMetadataRepository(MetadataRepository):
@@ -29,6 +34,11 @@ class PostgresMetadataRepository(MetadataRepository):
         self.pool_max_size = max(self.pool_min_size, int(pool_max_size))
         self.auto_init_schema = bool(auto_init_schema)
         self._pool: Any = None
+        self._embedder: Any = None
+        self._embedder_resolved = False
+        self._embedding_dim = self._safe_env_int("XH_OPENAI_EMBED_DIM", default=1536, minimum=8)
+        self._embedding_writes_enabled = self._safe_env_bool("XH_EMBEDDING_WRITE_ENABLED", default=True)
+        self._rag_doc_max_chars = self._safe_env_int("XH_RAG_DOC_MAX_CHARS", default=1400, minimum=300)
 
     async def connect(self) -> None:
         if self._pool is not None:
@@ -104,6 +114,9 @@ class PostgresMetadataRepository(MetadataRepository):
         element_id = str(meta.id or uuid.uuid4())
         now_value = meta.last_seen if isinstance(meta.last_seen, datetime) else datetime.now(UTC)
         payload = meta.to_dict()
+        rag_chunk_text = self._build_embedding_text(meta)
+        embedding = await self._embed_text(rag_chunk_text)
+        embedding_literal = self._vector_literal(embedding) if embedding else None
 
         async with pool.acquire() as conn:
             stored_id = await conn.fetchval(
@@ -118,6 +131,7 @@ class PostgresMetadataRepository(MetadataRepository):
                   robust_locator,
                   strategy_id,
                   signature,
+                  signature_embedding,
                   hints,
                   locator_variants,
                   quality_metrics,
@@ -135,12 +149,13 @@ class PostgresMetadataRepository(MetadataRepository):
                   $7::jsonb,
                   $8,
                   $9::jsonb,
-                  $10::jsonb,
+                  $10::vector,
                   $11::jsonb,
                   $12::jsonb,
-                  $13::timestamptz,
-                  $14,
-                  $15
+                  $13::jsonb,
+                  $14::timestamptz,
+                  $15,
+                  $16
                 )
                 ON CONFLICT (app_id, page_name, element_name)
                 DO UPDATE SET
@@ -149,6 +164,7 @@ class PostgresMetadataRepository(MetadataRepository):
                   robust_locator = EXCLUDED.robust_locator,
                   strategy_id = EXCLUDED.strategy_id,
                   signature = EXCLUDED.signature,
+                  signature_embedding = EXCLUDED.signature_embedding,
                   hints = EXCLUDED.hints,
                   locator_variants = EXCLUDED.locator_variants,
                   quality_metrics = EXCLUDED.quality_metrics,
@@ -166,6 +182,7 @@ class PostgresMetadataRepository(MetadataRepository):
                 self._json_or_none(payload.get("robust_locator")),
                 meta.strategy_id,
                 self._json_or_none(payload.get("signature")),
+                embedding_literal,
                 self._json_or_none(payload.get("hints")),
                 self._json_or_empty(payload.get("locator_variants")),
                 self._json_or_empty(payload.get("quality_metrics")),
@@ -176,6 +193,7 @@ class PostgresMetadataRepository(MetadataRepository):
             element_uuid = str(stored_id)
             await self._sync_locator_variants(conn, element_uuid, payload.get("locator_variants") or {})
             await self._sync_quality_metrics(conn, element_uuid, payload.get("quality_metrics") or {})
+            await self._upsert_element_rag_document(conn, meta, rag_chunk_text, embedding)
 
     async def find_candidates_by_page(
         self,
@@ -373,6 +391,237 @@ class PostgresMetadataRepository(MetadataRepository):
                 vector_text,
                 self._json_or_empty(metadata or {}),
             )
+
+    async def _upsert_element_rag_document(
+        self,
+        conn: Any,
+        meta: ElementMeta,
+        chunk_text: str,
+        embedding: list[float] | None,
+    ) -> None:
+        if not chunk_text:
+            return
+        vector_text = self._vector_literal(embedding) if embedding else None
+        metadata = {
+            "source": "element_meta",
+            "strategy_id": meta.strategy_id,
+            "field_type": meta.field_type,
+            "tag": meta.signature.tag if meta.signature else "",
+            "component_kind": meta.signature.component_kind if meta.signature else None,
+            "prompt_compact_text": self._build_prompt_compact_text(meta),
+            "fingerprint_tokens": self._fingerprint_tokens(meta),
+            "locator": meta.last_good_locator.to_dict() if meta.last_good_locator else None,
+            "robust_locator": meta.robust_locator.to_dict() if meta.robust_locator else None,
+            "quality_metrics": dict(meta.quality_metrics or {}),
+        }
+        await conn.execute(
+            """
+            DELETE FROM rag_documents
+            WHERE app_id=$1 AND page_name=$2 AND element_name=$3 AND source='element_meta'
+            """,
+            meta.app_id,
+            meta.page_name,
+            meta.element_name,
+        )
+        await conn.execute(
+            """
+            INSERT INTO rag_documents (
+              app_id,
+              page_name,
+              element_name,
+              source,
+              chunk_text,
+              embedding,
+              metadata
+            )
+            VALUES ($1,$2,$3,$4,$5,$6::vector,$7::jsonb)
+            """,
+            meta.app_id,
+            meta.page_name,
+            meta.element_name,
+            "element_meta",
+            chunk_text,
+            vector_text,
+            self._json_or_empty(metadata),
+        )
+
+    def _build_embedding_text(self, meta: ElementMeta) -> str:
+        parts: list[str] = [
+            f"app={meta.app_id}",
+            f"page={meta.page_name}",
+            f"element={meta.element_name}",
+            f"field_type={meta.field_type}",
+        ]
+        if meta.signature:
+            parts.append(f"tag={meta.signature.tag}")
+            if meta.signature.component_kind:
+                parts.append(f"component={meta.signature.component_kind}")
+            if meta.signature.short_text:
+                parts.append(f'label="{meta.signature.short_text}"')
+            stable_attrs = [
+                f"{key}={value}"
+                for key, value in sorted((meta.signature.stable_attrs or {}).items())
+                if str(key).strip() and str(value).strip()
+            ]
+            if stable_attrs:
+                parts.append("attrs=" + " ".join(stable_attrs))
+            if meta.signature.container_path:
+                parts.append("parent=" + " > ".join(meta.signature.container_path[:6]))
+
+        last_good_text = self._locator_fragment(meta.last_good_locator.to_dict() if meta.last_good_locator else None)
+        if last_good_text:
+            parts.append(f"last_good={last_good_text}")
+        robust_text = self._locator_fragment(meta.robust_locator.to_dict() if meta.robust_locator else None)
+        if robust_text:
+            parts.append(f"robust={robust_text}")
+
+        quality = dict(meta.quality_metrics or {})
+        if quality:
+            parts.extend(
+                [
+                    f"uniqueness={quality.get('uniqueness_score')}",
+                    f"stability={quality.get('stability_score')}",
+                    f"similarity={quality.get('similarity_score')}",
+                    f"overall={quality.get('overall_score')}",
+                ]
+            )
+
+        chunk = " | ".join(part for part in parts if part)
+        limit = max(300, int(self._rag_doc_max_chars))
+        if len(chunk) > limit:
+            return chunk[: limit - 3] + "..."
+        return chunk
+
+    def _build_prompt_compact_text(self, meta: ElementMeta) -> str:
+        tag = meta.signature.tag if meta.signature else ""
+        label = meta.signature.short_text if meta.signature else ""
+        parent = ""
+        if meta.signature and meta.signature.container_path:
+            parent = meta.signature.container_path[0]
+        locator = self._locator_fragment(meta.last_good_locator.to_dict() if meta.last_good_locator else None)
+        tokens = [
+            f"E {meta.element_name}",
+            f"T={tag}" if tag else "",
+            f"FT={meta.field_type}",
+            f'L="{label}"' if label else "",
+            f"P={parent}" if parent else "",
+            f"H={locator}" if locator else "",
+        ]
+        out = " ".join(token for token in tokens if token)
+        if len(out) > 320:
+            return out[:317] + "..."
+        return out
+
+    def _fingerprint_tokens(self, meta: ElementMeta) -> list[str]:
+        out: list[str] = []
+        out.append(f"field_type:{meta.field_type}")
+        if meta.signature:
+            if meta.signature.tag:
+                out.append(f"tag:{meta.signature.tag}")
+            if meta.signature.component_kind:
+                out.append(f"component:{meta.signature.component_kind}")
+            if meta.signature.short_text:
+                out.append(f"text:{meta.signature.short_text.strip().casefold()[:40]}")
+            for key, value in sorted((meta.signature.stable_attrs or {}).items()):
+                if not key or not value:
+                    continue
+                out.append(f"attr:{key}={str(value).strip().casefold()[:40]}")
+            if meta.signature.container_path:
+                out.append(f"parent:{meta.signature.container_path[0]}")
+        # Deduplicate while preserving order.
+        dedup: list[str] = []
+        seen: set[str] = set()
+        for token in out:
+            key = token.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            dedup.append(token)
+            if len(dedup) >= 16:
+                break
+        return dedup
+
+    @staticmethod
+    def _locator_fragment(locator_payload: Any) -> str:
+        if not isinstance(locator_payload, dict):
+            return ""
+        kind = str(locator_payload.get("kind") or "").strip()
+        value = str(locator_payload.get("value") or "").strip()
+        if not kind or not value:
+            return ""
+        value = " ".join(value.split())
+        if len(value) > 220:
+            value = value[:217] + "..."
+        return f"{kind}:{value}"
+
+    async def _embed_text(self, text: str) -> list[float] | None:
+        if not self._embedding_writes_enabled:
+            return None
+        payload = (text or "").strip()
+        if not payload:
+            return None
+        embedder = await self._resolve_embedder()
+        if embedder is None:
+            return None
+        try:
+            vector = await embedder.embed_text(payload)
+        except Exception as exc:
+            LOGGER.warning("Embedding generation failed in repository upsert: %s", exc)
+            return None
+        if not vector:
+            return None
+        return self._normalize_vector_size(vector, self._embedding_dim)
+
+    async def _resolve_embedder(self) -> Any | None:
+        if self._embedder_resolved:
+            return self._embedder
+        self._embedder_resolved = True
+
+        api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+        if not api_key or "placeholder" in api_key.casefold() or api_key.startswith("<"):
+            return None
+        model = (os.getenv("XH_OPENAI_EMBED_MODEL") or "text-embedding-3-small").strip()
+        try:
+            from xpath_healer.rag.openai_embedder import OpenAIEmbedder
+
+            self._embedder = OpenAIEmbedder(
+                api_key=api_key,
+                model=model,
+                dimensions=self._embedding_dim,
+            )
+        except Exception as exc:
+            LOGGER.warning("Embedding writer disabled: could not initialize OpenAI embedder (%s).", exc)
+            self._embedder = None
+        return self._embedder
+
+    @staticmethod
+    def _normalize_vector_size(vector: list[float], dim: int) -> list[float]:
+        if dim <= 0:
+            return [float(value) for value in vector]
+        values = [float(value) for value in vector]
+        if len(values) == dim:
+            return values
+        if len(values) > dim:
+            return values[:dim]
+        return values + [0.0] * (dim - len(values))
+
+    @staticmethod
+    def _safe_env_bool(name: str, default: bool) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        return raw.strip().casefold() in {"1", "true", "yes", "on"}
+
+    @staticmethod
+    def _safe_env_int(name: str, default: int, minimum: int = 1) -> int:
+        raw = os.getenv(name)
+        if raw is None:
+            return max(minimum, int(default))
+        try:
+            value = int(raw.strip())
+        except Exception:
+            return max(minimum, int(default))
+        return max(minimum, value)
 
     @staticmethod
     def schema_sql() -> str:

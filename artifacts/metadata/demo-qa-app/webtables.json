@@ -3,7 +3,7 @@
   "page_name": "webtables",
   "elements": {
     "row1_first_name": {
-      "id": "ba97683f-7763-4246-973c-aa085f1a9e51",
+      "id": "4be2c2aa-0bfa-4cc7-ae62-3ae1da75668f",
       "app_id": "demo-qa-app",
       "page_name": "webtables",
       "element_name": "row1_first_name",
@@ -96,45 +96,61 @@
         }
       },
       "quality_metrics": {
-        "uniqueness_score": 1.0,
-        "stability_score": 0.75,
-        "similarity_score": 1.0,
-        "overall_score": 0.9,
-        "matched_count": 1,
-        "chosen_index": 0,
-        "validation_reasons": [
-          "validated"
-        ],
-        "strategy_id": "metadata.last_good",
-        "strategy_score": 1.0,
-        "locator_kind": "text",
-        "locator_value": "Cierra",
-        "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:42.484125+00:00",
+            "timestamp": "2026-03-07T21:43:43.454798+00:00",
             "strategy_id": "text_occurrence",
-            "overall_score": 0.86,
-            "stability_score": 0.65,
+            "overall_score": 0.9,
+            "stability_score": 0.75,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:55:04.115827+00:00",
-            "overall_score": 0.9,
+            "timestamp": "2026-03-07T23:06:41.600318+00:00",
             "strategy_id": "metadata.last_good",
-            "uniqueness_score": 1.0,
+            "overall_score": 0.9,
             "stability_score": 0.75,
-            "similarity_score": 1.0
+            "similarity_score": 1.0,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:43.452964+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.9,
+            "stability_score": 0.75,
+            "similarity_score": 1.0,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:23.925739+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.9,
+            "stability_score": 0.75,
+            "similarity_score": 1.0,
+            "uniqueness_score": 1.0
           }
-        ]
+        ],
+        "strategy_id": "metadata.last_good",
+        "chosen_index": 0,
+        "locator_kind": "text",
+        "locator_value": "Cierra",
+        "matched_count": 1,
+        "overall_score": 0.9,
+        "strategy_score": 1.0,
+        "stability_score": 0.75,
+        "similarity_score": 1.0,
+        "uniqueness_score": 1.0,
+        "validation_reasons": [
+          "validated"
+        ],
+        "valid_against_hints": true
       },
-      "last_seen": "2026-03-07T18:55:04.057369+00:00",
-      "success_count": 2,
-      "fail_count": 0
+      "last_seen": "2026-03-08T01:00:45.412983+00:00",
+      "success_count": 4,
+      "fail_count": 5
     },
     "row1_last_name_vega": {
-      "id": "94e27d5f-2531-433f-9deb-a99ff28307d5",
+      "id": "93b380e7-b30e-4c42-b797-61e310b41f0a",
       "app_id": "demo-qa-app",
       "page_name": "webtables",
       "element_name": "row1_last_name_vega",
@@ -243,15 +259,31 @@
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T17:06:42.879313+00:00",
+            "timestamp": "2026-03-07T21:43:43.875849+00:00",
             "strategy_id": "text_occurrence",
-            "overall_score": 0.86,
-            "stability_score": 0.65,
+            "overall_score": 0.9,
+            "stability_score": 0.75,
             "similarity_score": 1.0,
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-07T18:55:04.554410+00:00",
+            "timestamp": "2026-03-07T23:06:42.039813+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.9,
+            "stability_score": 0.75,
+            "similarity_score": 1.0,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:39:44.291642+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.9,
+            "stability_score": 0.75,
+            "similarity_score": 1.0,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-08T00:52:29.056599+00:00",
             "overall_score": 0.9,
             "strategy_id": "metadata.last_good",
             "uniqueness_score": 1.0,
@@ -260,8 +292,8 @@
           }
         ]
       },
-      "last_seen": "2026-03-07T18:55:04.501766+00:00",
-      "success_count": 2,
+      "last_seen": "2026-03-08T00:52:28.994484+00:00",
+      "success_count": 4,
       "fail_count": 0
     }
   }

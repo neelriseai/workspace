@@ -30,7 +30,12 @@ class OpenAILLM(LLM):
     async def suggest_locators(self, prompt_payload: dict[str, Any]) -> list[dict[str, Any]]:
         system_prompt = (
             "You are a locator-repair assistant. "
-            "Return only JSON with a top-level key `candidates` that is an array of locator objects."
+            "Input contains compact symbol DSL + DOM signature + context. "
+            "Use graph relations when present (G NODE/PARENT/LEFT/RIGHT/ANCHOR). "
+            "Stay grounded in provided candidates/context and DOM facts; do not invent missing attributes. "
+            "Return only JSON with top-level key `candidates` as an array of locator objects. "
+            "Each candidate must include kind,value,options and should include confidence (0..1), reason, "
+            "and may include needs_more_context=true when evidence is insufficient."
         )
         response = await self.client.chat.completions.create(
             model=self.model,
@@ -43,9 +48,18 @@ class OpenAILLM(LLM):
         content = response.choices[0].message.content if response.choices else ""
         payload = self._parse_json_content(content)
         if isinstance(payload, dict):
+            needs_more_context = bool(payload.get("needs_more_context"))
             candidates = payload.get("candidates")
             if isinstance(candidates, list):
-                return [item for item in candidates if isinstance(item, dict)]
+                out: list[dict[str, Any]] = []
+                for item in candidates:
+                    if not isinstance(item, dict):
+                        continue
+                    enriched = dict(item)
+                    if needs_more_context and "needs_more_context" not in enriched:
+                        enriched["needs_more_context"] = True
+                    out.append(enriched)
+                return out
         if isinstance(payload, list):
             return [item for item in payload if isinstance(item, dict)]
         return []

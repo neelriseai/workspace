@@ -23,6 +23,12 @@ from xpath_healer.store.dual_repository import DualMetadataRepository
 from xpath_healer.store.json_repository import JsonMetadataRepository
 from xpath_healer.store.pg_repository import PostgresMetadataRepository
 from xpath_healer.store.repository import MetadataRepository
+from xpath_healer.utils.env import load_env_into_process
+
+
+# For integration runs, load non-secret defaults from workspace env files.
+# Process/user variables still override these values.
+load_env_into_process(include_env=True, include_example=True, override=False)
 
 
 def _slug(value: str) -> str:

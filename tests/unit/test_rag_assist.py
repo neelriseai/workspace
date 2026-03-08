@@ -45,9 +45,9 @@ class StubLLM:
         self.last_payload = prompt_payload
         return [
             {"kind": "xpath", "value": "//*", "options": {}},
-            {"kind": "css", "value": '[name="email"]', "options": {}},
-            {"kind": "css", "value": '[name="email"]', "options": {}},
-            {"kind": "role", "value": "textbox", "options": {"name": "Email"}},
+            {"kind": "css", "value": '[name="email"]', "options": {}, "confidence": 0.91, "reason": "stable name attr"},
+            {"kind": "css", "value": '[name="email"]', "options": {}, "confidence": 0.62},
+            {"kind": "role", "value": "textbox", "options": {"name": "Email"}, "confidence": 0.72},
         ]
 
 
@@ -73,8 +73,16 @@ async def test_rag_assist_uses_context_rerank_and_filters_weak_candidates() -> N
     assert retriever.context == {"app_id": "demo-app", "page_name": "login", "field_type": "textbox"}
     assert llm.last_payload is not None
     assert "dsl_prompt" in llm.last_payload
-    assert "FAILED_LOCATOR" in llm.last_payload["dsl_prompt"]
+    dsl = llm.last_payload["dsl_prompt"]
+    assert "E email_input" in dsl
+    assert "F xpath=//broken" in dsl
+    assert "G ANCHOR email" in dsl
+    assert "dom_signature" in llm.last_payload
+    assert "intent" not in llm.last_payload
+    assert "vars" not in llm.last_payload
     assert len(out) == 2
     assert out[0].kind == "css"
     assert out[0].value == '[name="email"]'
+    assert out[0].options.get("_llm_confidence") == pytest.approx(0.91)
+    assert out[0].options.get("_llm_reason") == "stable name attr"
     assert out[1].kind == "role"

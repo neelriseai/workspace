@@ -10,48 +10,39 @@ from xpath_healer.utils.text import normalize_text, safe_join
 
 def build_prompt_dsl(
     inp: BuildInput,
-    dom_snippet: str,
+    dom_signature: str,
     context_candidates: list[dict[str, Any]],
+    deep_graph: bool = False,
 ) -> str:
     lines: list[str] = []
-    lines.extend(["ELEMENT", inp.element_name or "unknown", ""])
+    # Symbol DSL (compact, deterministic, low-token format):
+    # E=element, PG=page, FT=field_type, F=failed locator, A=attributes,
+    # P=parent/container hint, G=graph relations, C=context candidates, D=dom signature.
+    lines.append(f"E {normalize_text(inp.element_name) or 'unknown'}")
+    lines.append(f"PG {normalize_text(inp.page_name) or 'unknown'}")
+    lines.append(f"FT {normalize_text(inp.field_type) or 'generic'}")
+    lines.append(f"F {_compact_locator(inp.fallback.to_dict())}")
+    lines.append(f"A {_compact_attr_tokens(inp)}")
+    lines.append(f"P {_compact_parent_hint(inp, context_candidates)}")
+    lines.extend(_graph_hint_lines(inp))
 
-    lines.extend(["PAGE", inp.page_name or "unknown", ""])
-
-    lines.extend(["SIGNATURE"])
-    lines.append(f"field_type={inp.field_type}")
-    if inp.intent.label:
-        lines.append(f"label={inp.intent.label}")
-    if inp.intent.text:
-        lines.append(f"text={inp.intent.text}")
-    if inp.intent.axis_hint:
-        lines.append(f"axis_hint={inp.intent.axis_hint}")
-    lines.append(f"occurrence={inp.intent.occurrence}")
-    if inp.vars:
-        compact_vars = safe_join([f"{k}={v}" for k, v in sorted(inp.vars.items())], sep="; ")
-        lines.append(f"vars={compact_vars}")
-    lines.append("")
-
-    lines.extend(["FAILED_LOCATOR", _compact_locator(inp.fallback.to_dict()), ""])
-
-    lines.append("CANDIDATES")
-    for idx, item in enumerate(context_candidates, start=1):
+    lines.append("C")
+    for idx, item in enumerate(context_candidates[:5], start=1):
         locator = _candidate_locator_line(item)
         score = item.get("rerank_score")
         if score is None:
             lines.append(f"{idx} {locator}")
         else:
-            lines.append(f"{idx} {locator} score={float(score):.4f}")
-    lines.append("")
+            lines.append(f"{idx} {locator} S={float(score):.4f}")
 
-    lines.extend(["DOM_SNIPPET", _compact_dom(dom_snippet, limit=1200), ""])
+    lines.append(f"D {_compact_dom(dom_signature, limit=540 if deep_graph else 220)}")
+    if deep_graph:
+        lines.append("GD on")
     lines.extend(
         [
-            "INSTRUCTIONS",
-            "Return JSON array only.",
-            "Schema: [{\"kind\":\"css|xpath|role|text|pw\",\"value\":\"...\",\"options\":{...}}]",
-            "Prefer stable attrs and short relative locators.",
-            "Avoid absolute/deep-index xpaths.",
+            "R prefer stable attrs; prefer css/role when unique; avoid absolute/deep-index xpath; max 5",
+            "R stay grounded in C and D; if evidence weak set needs_more_context=true",
+            "O JSON only: [{\"kind\":\"css|xpath|role|text|pw\",\"value\":\"...\",\"options\":{},\"confidence\":0.0,\"reason\":\"...\",\"needs_more_context\":false}]",
         ]
     )
     return "\n".join(lines).strip()
@@ -70,6 +61,73 @@ def _compact_locator(locator_payload: dict[str, Any]) -> str:
     return f"{kind}={value}"
 
 
+def _compact_attr_tokens(inp: BuildInput) -> str:
+    tokens: list[str] = [f"FT={normalize_text(inp.field_type)}"]
+    if inp.intent.label:
+        tokens.append(f'LBL="{inp.intent.label}"')
+    if inp.intent.text:
+        tokens.append(f'TXT="{inp.intent.text}"')
+    if inp.intent.axis_hint:
+        tokens.append(f"AX={normalize_text(inp.intent.axis_hint)}")
+    tokens.append(f"OCC={inp.intent.occurrence}")
+
+    preferred_keys = (
+        "id",
+        "data-testid",
+        "aria-label",
+        "name",
+        "formcontrolname",
+        "placeholder",
+        "role",
+        "type",
+        "href",
+    )
+    key_symbol = {
+        "id": "ID",
+        "data-testid": "TID",
+        "aria-label": "AR",
+        "name": "NM",
+        "formcontrolname": "FCN",
+        "placeholder": "PH",
+        "role": "RL",
+        "type": "TP",
+        "href": "HF",
+    }
+    for key in preferred_keys:
+        value = inp.vars.get(key)
+        if value:
+            symbol = key_symbol.get(key, key.upper())
+            tokens.append(f'{symbol}="{value}"')
+
+    tag_hint = normalize_text(inp.vars.get("tag"))
+    if tag_hint:
+        tokens.append(f"T={tag_hint}")
+    elif inp.field_type.casefold() in {"button", "link", "textbox", "input", "checkbox"}:
+        inferred = {
+            "button": "button",
+            "link": "a",
+            "textbox": "input",
+            "input": "input",
+            "checkbox": "input",
+        }[inp.field_type.casefold()]
+        tokens.append(f"T={inferred}")
+    return safe_join(tokens, sep=" ")
+
+
+def _compact_parent_hint(inp: BuildInput, context_candidates: list[dict[str, Any]]) -> str:
+    for key in ("container", "parent", "section", "group"):
+        value = inp.vars.get(key)
+        if value:
+            return normalize_text(value)
+    if context_candidates:
+        candidate = context_candidates[0]
+        for key in ("page_name", "element_name"):
+            value = candidate.get(key)
+            if value:
+                return f"{normalize_text(str(candidate.get('page_name') or inp.page_name))}.{normalize_text(str(value))}"
+    return normalize_text(inp.page_name)
+
+
 def _candidate_locator_line(candidate: dict[str, Any]) -> str:
     for key in ("locator", "last_good_locator", "robust_locator"):
         value = candidate.get(key)
@@ -84,3 +142,52 @@ def _candidate_locator_line(candidate: dict[str, Any]) -> str:
     page = normalize_text(str(candidate.get("page_name") or ""))
     element = normalize_text(str(candidate.get("element_name") or ""))
     return f"meta={page}.{element}".strip(".")
+
+
+def _graph_hint_lines(inp: BuildInput) -> list[str]:
+    lines: list[str] = []
+    node_hint = _node_hint(inp)
+    if node_hint:
+        lines.append(f"G NODE {node_hint}")
+
+    parent_hint = ""
+    for key in ("container", "parent", "section", "group", "ancestor"):
+        value = inp.vars.get(key)
+        if value:
+            parent_hint = normalize_text(value)
+            break
+    if parent_hint:
+        lines.append(f"G PARENT {parent_hint}")
+
+    left = _first_hint(inp, ("left", "left_sibling", "before", "preceding", "prev", "previous"))
+    if left:
+        lines.append(f"G LEFT {left}")
+
+    right = _first_hint(inp, ("right", "right_sibling", "after", "following", "next"))
+    if right:
+        lines.append(f"G RIGHT {right}")
+
+    anchor = normalize_text(inp.intent.label or inp.intent.text or inp.vars.get("anchor"))
+    if anchor:
+        lines.append(f"G ANCHOR {anchor}")
+    return lines
+
+
+def _node_hint(inp: BuildInput) -> str:
+    tag = normalize_text(inp.vars.get("tag"))
+    id_like = inp.vars.get("id") or inp.vars.get("data-testid") or inp.vars.get("name")
+    node = tag
+    if id_like:
+        suffix = normalize_text(id_like).replace(" ", "-")
+        if node:
+            return f"{node}#{suffix}"
+        return f"#{suffix}"
+    return node
+
+
+def _first_hint(inp: BuildInput, keys: tuple[str, ...]) -> str:
+    for key in keys:
+        value = inp.vars.get(key)
+        if value:
+            return normalize_text(value)
+    return ""
