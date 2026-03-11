@@ -35,10 +35,16 @@ $env:XH_HEADLESS='false'   # optional, remove or set true for headless
 python -m pytest -q -rs -m integration tests\integration\test_demo_qa_healing_bdd.py --cucumberjson=artifacts/reports/cucumber.json
 
 
+Set (user-scope, persistent):
 
 setx OPENAI_API_KEY "YOUR_NEW_KEY"
 setx XH_PG_DSN "postgresql://postgres:YOUR_PASSWORD@localhost:5432/postgres"
 setx XH_OPENAI_MODEL "gpt-4.1"
 setx XH_OPENAI_EMBED_MODEL "text-embedding-3-large"
+
+
+Immediate use (current session only — no restart required):
+$env:OPENAI_API_KEY = "YOUR_NEW_KEY"
+
 
 
