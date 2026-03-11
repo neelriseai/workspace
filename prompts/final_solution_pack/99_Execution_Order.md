@@ -12,6 +12,7 @@ Phase A: Global preparation
 5. Apply `04_Manual_Database_Schema_Guide.md` manually
 6. Read `05_Whole_Solution_Code_Graph.md`
 7. Read `06_Global_Analysis_and_Debugging_Approach.md`
+8. Read `07_Phase_Definitions.md`
 
 Phase B: Core layer
 1. `layers/01_core_healing/00_Layer_Architecture_Prompt.md`
