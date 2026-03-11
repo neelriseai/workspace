@@ -187,6 +187,38 @@
           },
           {
             "timestamp": "2026-03-10T23:46:38.447805+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-11T00:25:47.042809+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-11T00:49:36.915090+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-11T00:50:51.059108+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-11T01:19:34.352878+00:00",
             "overall_score": 0.726,
             "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
@@ -195,8 +227,8 @@
           }
         ]
       },
-      "last_seen": "2026-03-10T23:46:38.310065+00:00",
-      "success_count": 12,
+      "last_seen": "2026-03-11T01:19:34.179349+00:00",
+      "success_count": 16,
       "fail_count": 3
     }
   },

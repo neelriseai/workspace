@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
+import logging
 
 from xpath_healer.rag.llm import LLM
 
@@ -26,6 +27,7 @@ class OpenAILLM(LLM):
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is required for OpenAILLM.")
         self.client = AsyncOpenAI(api_key=self.api_key)
+        self.logger = logging.getLogger("xpath_healer.rag.openai_llm")
 
     async def suggest_locators(self, prompt_payload: dict[str, Any]) -> list[dict[str, Any]]:
         system_prompt = (
@@ -37,15 +39,31 @@ class OpenAILLM(LLM):
             "Each candidate must include kind,value,options and should include confidence (0..1), reason, "
             "and may include needs_more_context=true when evidence is insufficient."
         )
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            temperature=0.0,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(prompt_payload, ensure_ascii=True)},
-            ],
-        )
-        content = response.choices[0].message.content if response.choices else ""
+        payload_json = json.dumps(prompt_payload, ensure_ascii=True, separators=(",", ":"))
+        try:
+            self.logger.info("OpenAI chat request: model=%s payload_chars=%d", self.model, len(payload_json))
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                temperature=0.0,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": payload_json},
+                ],
+            )
+        except Exception:
+            self.logger.exception("OpenAI chat request failed: model=%s", self.model)
+            raise
+        try:
+            content = response.choices[0].message.content if response.choices else ""
+        except Exception:
+            content = ""
+        try:
+            resp_id = getattr(response, "id", None) or (response.get("id") if hasattr(response, "get") else None)
+            resp_model = getattr(response, "model", None) or (response.get("model") if hasattr(response, "get") else None)
+            resp_usage = getattr(response, "usage", None) or (response.get("usage") if hasattr(response, "get") else None)
+            self.logger.info("OpenAI chat response: id=%s model=%s usage=%s", resp_id, resp_model, resp_usage)
+        except Exception:
+            pass
         payload = self._parse_json_content(content)
         if isinstance(payload, dict):
             needs_more_context = bool(payload.get("needs_more_context"))
