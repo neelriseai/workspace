@@ -20,6 +20,13 @@ Phase B: Core layer
 4. `layers/01_core_healing/04_Code_Graphs.md`
 5. `layers/01_core_healing/03_Unit_Test_and_Debugging_Prompts.md`
 
+Core + Cucumber automation fast-track (if DB/Service/Model are deferred):
+1. Complete Phase A.
+2. Complete Phase B.
+3. Jump directly to Phase F (Integration layer / pytest-bdd cucumber suite).
+4. Run only core + integration validation from Phase G.
+5. Keep RAG-related flags disabled in this fast-track mode.
+
 Phase C: Database layer
 1. `layers/02_database_storage/00_Layer_Architecture_Prompt.md`
 2. `layers/02_database_storage/01_Class_Structure_Prompt.md`
@@ -53,4 +60,3 @@ Phase G: End-to-end validation
 2. Run integration suite with desired stage profile.
 3. Confirm logs, reports, screenshots, videos, metadata persistence.
 4. Freeze configuration baseline for target environment.
-
