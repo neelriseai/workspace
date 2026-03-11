@@ -1,113 +1,284 @@
-Master Design — XPath Healer (project-tailored)
+Master Design - XPath Healer (Current Solution Baseline)
 
 1. Project Overview
 
-XPath Healer is a layered, deterministic-first framework that repairs broken UI locators during automated tests. It prefers deterministic, rule-based recovery using DOM structure and stored metadata, and falls back to an optional RAG/LLM-assisted stage (embeddings + LLM) when deterministic strategies cannot produce a reliable locator.
+XPath Healer is a Python, deterministic-first locator healing framework with optional RAG/LLM recovery.
+It is library-first (`xpath_healer/*`) with a thin FastAPI wrapper (`service/main.py`) and Playwright BDD integration tests (`tests/integration/*`).
+When a locator breaks, the system runs a staged healing cascade, validates candidates on live DOM, scores quality, persists metadata, and emits traceable logs.
+Storage is dual-mode: Postgres primary (with pgvector) plus JSON fallback backup.
+RAG is optional and is used as final fallback unless stage profile is explicitly set to `llm_only`.
 
 2. Core Principles
 
-- Deterministic-first: always attempt rule-based and metadata-driven healing before invoking models.
-- Layered and loosely-coupled: core healing, framework integration, storage, service, and model layers are separable and independently testable.
-- Testability: every component must support unit tests and replayable integration tests.
-- Observability: healing stages emit structured logs and telemetry (failed locator, candidates, ranking, decisions, LLM telemetry).
-- Principle of least privilege for secrets: API keys must not be logged; use masked or external secret stores.
+Architecture Principles
+
+1. Deterministic-first by default
+   Healing runs deterministic stages before LLM unless `XH_STAGE_PROFILE=llm_only`.
+
+2. Layered and pluggable
+   Core, store, service, and RAG layers are decoupled with interfaces and stage flags.
+
+3. Validator-gated acceptance
+   A candidate is accepted only after runtime validation (visibility/enabled/single-match intent).
+
+4. Observability-first
+   Every stage emits structured trace events (`recover_start`, `rag_context`, `rag`, `rag_retry`, `rag_hallucination`, `recover_end`).
+
+5. Reproducibility
+   Same env flags + same prompts should regenerate same package structure and behavior.
+
+6. Safe secret handling
+   API key/DSN are read from environment; never hardcode secrets in source.
 
 3. System Layers
 
-- Core Healing Layer: signature extraction, candidate generation, ranking, validation, and healing decisions (`xpath_healer/core/*`).
-- Framework Integration Layer: Playwright/Bdd glue and test interceptors that call the healer (`tests/integration`, BDD features).
-- Storage Layer: Dual repository with Postgres primary and JSON fallback (`xpath_healer/store/*`, `PostgresMetadataRepository`, `JsonMetadataRepository`).
-- Service Layer: high-level facade (`xpath_healer/api/facade.py`) that wires components and exposes programmatic API.
-- Model Layer (optional): embedding + retrieval + LLM assist (`xpath_healer/rag/*` with `OpenAIEmbedder`, `OpenAILLM`, `PgVectorRetriever`, `RagAssist`).
+System Layers
+
+1. Core Healing Layer (`xpath_healer/core`)
+   Orchestrates healing stages, candidate generation, ranking/scoring, validation, retries, and persistence hooks.
+
+2. DOM and Context Layer (`xpath_healer/dom`, `xpath_healer/core/page_index.py`, `xpath_healer/core/signature.py`)
+   Captures DOM snapshot, mines robust selectors, builds signatures/fingerprints/page index.
+
+3. Storage Layer (`xpath_healer/store`)
+   Repository abstraction with in-memory, JSON, Postgres, and dual-write/dual-read repository behavior.
+
+4. RAG/Model Layer (`xpath_healer/rag`)
+   Embedding, retrieval (pgvector), compact DSL prompt construction, LLM suggestion parsing, anti-hallucination checks.
+
+5. Service Layer (`service/main.py`)
+   FastAPI endpoints: `/health`, `/generate`, `/heal`.
+
+6. Framework Integration Layer (`tests/integration`)
+   Pytest-BDD + Playwright suite validates real healing paths, screenshots, logs, JSON/JUnit/Cucumber reports.
 
 4. High-Level Healing Flow
 
-1. Test action fails with locator-not-found.
-2. Framework Integration intercepts the failure and calls the facade.
-3. Core extracts a signature (DOM snapshot, attributes) and builds candidates via strategies.
-4. Candidates are ranked (similarity, stability, uniqueness) and validated against the live DOM.
-5. If a validated candidate is found, it is persisted and returned; test resumes.
-6. If deterministic attempts fail and RAG is enabled, the Model Layer composes a prompt, retrieves context via embeddings+PgVectorRetriever, and calls the LLM to propose candidates.
-7. LLM candidates are post-processed (dedupe, hallucination checks, grounding) and validated; results are logged with LLM telemetry.
+Healing Flow (runtime)
 
-This flow matches existing log stages: `recover_start`, `rag_context`, `rag`, `rag_retry`, `rag_hallucination`, `recover_end`.
+1. Test action fails due to broken fallback locator.
+2. `XPathHealerFacade.recover_locator(...)` builds `BuildInput` and forwards to `HealingService.recover_locator(...)`.
+3. Service resolves hints + existing metadata and emits `recover_start`.
+4. Stage cascade executes (when enabled):
+   `fallback -> metadata -> rules -> fingerprint -> page_index -> signature -> dom_mining -> defaults -> position -> rag`.
+5. Each stage emits trace entries and validation results; parallel evaluation is used for selected stages.
+6. RAG stage (if enabled and adapters configured):
+   build compact DOM signature + DSL prompt -> embed query -> retrieve candidates -> rerank -> LLM suggest -> parse/dedupe/hallucination checks -> validate.
+7. If accepted, metadata is updated (`last_good_locator`, `robust_locator`, variants, quality metrics, counters) and `recover_end` success is logged.
+8. If all fail, failure counters/events are persisted and `recover_end` fail is logged.
 
 5. Module Responsibilities
 
-- `SignatureExtractor` (`core/signature.py`): produce compact DOM signature and token seeds.
-- `StrategyRegistry` + strategy modules (`core/strategies`): generate candidate locators (label-based, role, attributes, position, templates).
-- `CandidateRanker`/`SimilarityService` (`core/similarity.py`): score candidates by uniqueness/stability/similarity.
-- `Validator` (`core/validator.py`): assert candidate correctness against the DOM and business intent.
-- `HealingService` (`core/healing_service.py`): orchestrates recovery flow and persistence.
-- `RagAssist` (`rag/rag_assist.py`): builds prompt payloads, calls embedder + retriever + LLM, and sanitizes suggestions.
-- `OpenAIEmbedder` / `OpenAILLM` (`rag/*`): adapters to OpenAI async client (keep keys out of logs; only record request sizes and response IDs).
-- `PostgresMetadataRepository` / `DualMetadataRepository` (`store/*`): storage backends and fallback logic.
+Core Modules
 
-6. Project Structure (aligned with repo)
+- `xpath_healer/api/facade.py`
+  - `XPathHealerFacade.recover_locator(...)`: main entry for runtime healing.
+  - `XPathHealerFacade.generate_locator_async(...)`: authoring-time deterministic locator generation.
+  - `_build_repository_from_env()`: in-memory vs dual Postgres+JSON repo.
+  - `_build_rag_assist_from_env()`: wires `OpenAIEmbedder`, `PgVectorRetriever`, `OpenAILLM`, `RagAssist`.
 
-- `xpath_healer/` (source)
-  - `core/` — signature, strategies, similarity, validator, healing_service
-  - `dom/` — snapshotting and mining
-  - `rag/` — embedder, llm adapter, retriever, rag_assist
-  - `api/` — `facade.py` wiring
-  - `store/` — repositories (Postgres, JSON, in-memory)
-  - `utils/`, `store/pg_repository.py` etc.
-- `tests/` — `unit/` and `integration/` (BDD features under `tests/integration/features`)
-- `docs/` — design docs, prompts
-- `artifacts/` — run logs, screenshots, metadata
+- `xpath_healer/core/healing_service.py`
+  - `HealingService.recover_locator(...)`: master stage orchestrator.
+  - `_evaluate_candidates(...)` and `_evaluate_candidates_parallel(...)`: validation + tracing.
+  - `_validate_candidate_with_retry(...)`: lightweight retry for transient reason codes.
+  - `_stage_enabled(...)`: per-stage runtime toggles.
 
-7. Implementation Order (phased)
+- `xpath_healer/core/builder.py` + `xpath_healer/core/strategies/*`
+  - Strategy registry and candidate construction for rules/defaults/position classes.
+  - Key deterministic strategies include:
+    `GenericTemplateStrategy`, `AxisHintFieldResolverStrategy`, `CompositeLabelControlStrategy`,
+    `CheckboxIconByLabelStrategy`, `ButtonTextCandidateStrategy`, `MultiFieldTextResolverStrategy`,
+    `AttributeStrategy`, `GridCellByColIdStrategy`, `TextOccurrenceStrategy`, `PositionFallbackStrategy`.
 
-Phase 1 — Core stability
-- Harden and test `core/*` components and `Validator`.
-- Ensure deterministic strategies cover most common cases.
+- `xpath_healer/core/validator.py`
+  - `XPathValidator.validate_candidate(...)`: runtime gating for match count, visibility, enabled-state, axis/geometry checks.
 
-Phase 2 — Tests & Observability
-- Add/expand unit tests for core and strategies.
-- Standardize structured logs for healing stages and decisions.
+- `xpath_healer/core/signature.py`, `fingerprint.py`, `similarity.py`, `page_index.py`
+  - Signature extraction, fingerprint matching, quality scoring, and page-level indexing utilities.
 
-Phase 3 — Storage
-- Ensure `PostgresMetadataRepository` migrations and `DualMetadataRepository` fallback are stable.
+Storage Modules
 
-Phase 4 — Framework integration
-- Finalize Playwright/Bdd interceptors and integration tests.
+- `xpath_healer/store/repository.py`: repository interface contract.
+- `xpath_healer/store/memory_repository.py`: standalone mode backend.
+- `xpath_healer/store/json_repository.py`: local metadata backup (`artifacts/metadata`).
+- `xpath_healer/store/pg_repository.py`: Postgres + pgvector backend.
+- `xpath_healer/store/dual_repository.py`: DB-first + JSON fallback behavior.
 
-Phase 5 — Optional Model/RAG
-- Add `OpenAIEmbedder` + `PgVectorRetriever` + `OpenAILLM` + `RagAssist` behind feature flag (`XH_RAG_ENABLED`).
-- Add LLM telemetry and safeguards (confidence thresholds, hallucination red flags).
+RAG Modules
 
-Phase 6 — Service and analytics
-- Expose healing API endpoints and build analytics/dashboard features.
+- `xpath_healer/rag/rag_assist.py`
+  - `suggest(...)`: retrieve + prompt + LLM suggest + parse/ground/dedupe.
+- `xpath_healer/rag/prompt_builder.py` and `prompt_dsl.py`
+  - Compact, graph-aware prompt payload with DOM signature and constrained candidate context.
+- `xpath_healer/rag/openai_embedder.py`, `openai_llm.py`, `pgvector_retriever.py`
+  - Provider adapters for embeddings/chat and vector retrieval.
+
+Service Modules
+
+- `service/main.py`
+  - `create_app(...)`, `/generate`, `/heal` endpoints, request/response Pydantic models.
+
+Data Contract (Postgres Schema)
+
+- Extensions: `vector`, `pgcrypto`
+- Tables:
+  - `elements`
+    - locator/signature state per element (`last_good_locator`, `robust_locator`, `signature_embedding vector(1536)`, counters).
+  - `locator_variants`
+    - normalized locator variants keyed by `variant_key`.
+  - `quality_metrics`
+    - uniqueness/stability/similarity/overall and validation info.
+  - `page_index`
+    - page snapshot identity (`app_id`, `page_name`, `dom_hash`).
+  - `indexed_elements`
+    - mined page elements and structural attributes (`xpath`, `css`, `fingerprint_hash`, metadata).
+  - `events`
+    - stage-level trace logs.
+  - `healing_events`
+    - run-oriented healing outcomes.
+  - `rag_documents`
+    - retrievable chunks + embeddings (`embedding vector(1536)`).
+
+6. Project Structure
+
+Recommended Current Structure
+
+xpath-healer/
+ - xpath_healer/
+   - api/
+     - facade.py
+   - core/
+     - config.py
+     - healing_service.py
+     - validator.py
+     - builder.py
+     - signature.py
+     - fingerprint.py
+     - similarity.py
+     - page_index.py
+     - models.py
+     - strategy_registry.py
+     - strategies/
+   - dom/
+     - snapshot.py
+     - mine.py
+   - store/
+     - repository.py
+     - memory_repository.py
+     - json_repository.py
+     - pg_repository.py
+     - dual_repository.py
+   - rag/
+     - rag_assist.py
+     - prompt_builder.py
+     - prompt_dsl.py
+     - openai_embedder.py
+     - openai_llm.py
+     - pgvector_retriever.py
+ - service/
+   - main.py
+ - tests/
+   - unit/
+   - integration/
+     - features/demo_qa_healing.feature
+     - test_demo_qa_healing_bdd.py
+ - prompts/
+   - 01_Master_Design_for_xpath_healer.md
+   - 02_Prompts Structure.md
+   - architecture/
+   - phases/
+   - tasks/
+ - docs/
+ - artifacts/
+
+7. Implementation Order
+
+Implementation Phases to Recreate Same Solution
+
+Phase 1 - Project Bootstrap
+- Create package skeleton and core domain models (`LocatorSpec`, `CandidateSpec`, `Recovered`, `ElementMeta`).
+- Add environment-driven config (`HealerConfig.from_env`).
+
+Phase 2 - Deterministic Core
+- Implement strategy registry + strategies + builder.
+- Implement validator and retry logic.
+- Implement `HealingService` with stage orchestration and tracing.
+
+Phase 3 - Storage
+- Implement repository interface + memory/json/postgres/dual repositories.
+- Implement schema initialization and CRUD/upsert logic for metadata/events/page index.
+
+Phase 4 - RAG Layer
+- Implement embedder/retriever/LLM interfaces and OpenAI/pgvector adapters.
+- Implement compact prompt DSL and `RagAssist` with reranking and hallucination guards.
+
+Phase 5 - Facade and API
+- Wire everything through `XPathHealerFacade`.
+- Expose `/health`, `/generate`, `/heal` via FastAPI.
+
+Phase 6 - Test and Artifacts
+- Add unit tests across config/core/store/rag.
+- Add Playwright pytest-bdd integration suite with screenshots/video/reports/logs.
 
 8. Constraints
 
-- Phase 1 must not introduce AI/network dependencies.
-- Avoid wide-reaching refactors in unrelated modules.
-- Do not log secrets (OPENAI_API_KEY); log only masked identifiers or response IDs.
-- Keep components cohesive and small; prefer composition over inheritance.
+Constraints
+
+- Do not bypass runtime validation before accepting a healed locator.
+- Keep deterministic stages available even when adding new model features.
+- Keep stage order and stage names stable (used in logs/tests/reports).
+- Keep secret values outside source code (`OPENAI_API_KEY`, `XH_PG_DSN`).
+- Keep repository contract backward compatible across backends.
+- Avoid introducing UI-test-framework specifics into core modules (core must stay library-first).
 
 9. Observability and Logging
 
-Logging rules (structured JSON-like fields):
-- `correlation_id`, `stage` (recover_start,rag_context,rag,rag_retry,rag_hallucination,recover_end)
-- `failed_locator`, `element_name`, `app_id`, `page_name`
-- `candidate_locators` (truncated list), `ranking_scores`
-- `healing_decision`, `accepted_locator`, `confidence`
-- LLM telemetry: `payload_chars`, `embedding_dims`, `prompt_context_count`, `response_id`, `model`, `usage` (token counts)
-- Errors and validation failures should include sanitized error codes only.
+Logging Requirements
+
+- Log files:
+  - `artifacts/logs/healing-flow.log`
+  - `artifacts/logs/integration.log`
+- Report artifacts:
+  - `artifacts/reports/cucumber.json`
+  - `artifacts/reports/integration-junit.xml`
+  - `artifacts/reports/healing-calls.jsonl`
+
+Each healing attempt should record:
+- `correlation_id`, `app_id`, `page_name`, `element_name`, `field_type`
+- stage name and status
+- selected locator kind/value
+- validation outcome and reason codes
+- strategy id
+- quality scores: uniqueness/stability/similarity/overall
+- retry metadata (`attempts_used`, retry reason)
+- RAG telemetry (`raw_context_count`, `prompt_context_count`, `retrieve_k`, `payload_chars`, `embedding_dims`)
 
 10. Future Extensions
 
-- Page indexing and full-text/vector search backed by pgvector.
-- Pluggable retrievers and LLM adapters (so OpenAI can be swapped for other vendors).
-- Healing analytics dashboard and per-app usage reports.
-- Fine-grained policy controls for auto-accept vs. manual review of LLM suggestions.
+Future Capabilities
 
----
+- Weighted hybrid retrieval (signature vector + lexical + quality prior).
+- Multi-model routing and provider abstraction for LLM/embedder.
+- Self-healing analytics dashboard (trend by app/page/element/stage).
+- Manual review workflow for uncertain model suggestions.
+- CI policy packs (strict deterministic-only, hybrid, llm-only A/B experiments).
 
-Next steps I can take now:
-- Commit this doc to the repo (already saved as `docs/Master_Design_for_xpath_healer.md`).
-- Create a short checklist to implement Phase 1 changes.
-- Add structured log schema enforcement and unit tests.
+-----------------------------------------------------------------------------
+Regeneration Prompt Contract (copy/paste into an AI coding assistant)
+-----------------------------------------------------------------------------
 
-Which next step would you like me to do?
+You are recreating XPath Healer exactly as specified by `prompts/01_Master_Design_for_xpath_healer.md`.
+
+Rules:
+1. Create the same package structure and module names.
+2. Implement deterministic-first staged healing with this order:
+   fallback -> metadata -> rules -> fingerprint -> page_index -> signature -> dom_mining -> defaults -> position -> rag.
+3. Keep stage toggles environment-driven via `HealerConfig.from_env`.
+4. Use repository abstraction and provide memory/json/postgres/dual implementations.
+5. In Postgres schema create: page_index, indexed_elements, elements, locator_variants, quality_metrics, events, healing_events, rag_documents, and pgvector indexes.
+6. RAG must be optional and final fallback (except `llm_only` profile), with compact DSL prompt and anti-hallucination filters.
+7. Expose FastAPI endpoints `/health`, `/generate`, `/heal`.
+8. Add pytest unit tests and pytest-bdd Playwright integration tests with logs/screenshots/video/cucumber+junit reports.
+9. Preserve structured logging fields and artifact locations from this design.
+10. Do not hardcode secrets; use environment variables only.
+
