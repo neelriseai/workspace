@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from xpath_healer.core.models import ElementMeta
+from xpath_healer.core.models import ElementMeta, PageIndex
 from xpath_healer.store.repository import MetadataRepository
 
 
@@ -89,6 +89,45 @@ class DualMetadataRepository(MetadataRepository):
         if primary_error is not None:
             raise primary_error
         return []
+
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
+        primary_error: Exception | None = None
+        try:
+            primary_result = await self.primary.get_page_index(app_id, page_name)
+            if primary_result is not None:
+                return primary_result
+        except Exception as exc:
+            primary_error = exc
+
+        fallback_result = await self.fallback.get_page_index(app_id, page_name)
+        if fallback_result is not None:
+            try:
+                await self.primary.upsert_page_index(fallback_result)
+            except Exception:
+                pass
+            return fallback_result
+
+        if primary_error is not None:
+            raise primary_error
+        return None
+
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        primary_error: Exception | None = None
+        fallback_error: Exception | None = None
+
+        try:
+            await self.primary.upsert_page_index(page_index)
+        except Exception as exc:
+            primary_error = exc
+
+        try:
+            await self.fallback.upsert_page_index(page_index)
+        except Exception as exc:
+            fallback_error = exc
+
+        if primary_error is None or fallback_error is None:
+            return
+        raise RuntimeError(f"Dual upsert_page_index failed: primary={primary_error}; fallback={fallback_error}")
 
     async def log_event(self, event: dict[str, Any]) -> None:
         primary_error: Exception | None = None

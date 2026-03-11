@@ -7,6 +7,7 @@ from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.context import StrategyContext
 from xpath_healer.core.healing_service import HealingService
 from xpath_healer.core.models import BuildInput, ElementMeta, ElementSignature, Intent, LocatorSpec
+from xpath_healer.core.page_index import PageIndexer
 from xpath_healer.core.strategy_registry import StrategyRegistry
 from xpath_healer.store.memory_repository import InMemoryMetadataRepository
 
@@ -51,6 +52,7 @@ async def test_fingerprint_stage_builds_candidates_from_structural_match() -> No
         signature_extractor=None,  # type: ignore[arg-type]
         dom_snapshotter=None,  # type: ignore[arg-type]
         dom_miner=None,  # type: ignore[arg-type]
+        page_indexer=PageIndexer(),
         logger=logging.getLogger("test"),
     )
     inp = BuildInput(

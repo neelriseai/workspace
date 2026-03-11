@@ -9,7 +9,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from xpath_healer.core.models import ElementMeta
+from xpath_healer.core.models import ElementMeta, IndexedElement, PageIndex
 from xpath_healer.store.repository import MetadataRepository
 
 try:
@@ -245,6 +245,201 @@ class PostgresMetadataRepository(MetadataRepository):
                     payload["quality_metrics"] = await self._load_quality_metrics(conn, str(row["id"]))
                 out.append(ElementMeta.from_dict(payload))
             return out
+
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                  page_id,
+                  app_id,
+                  page_name,
+                  dom_hash,
+                  snapshot_version,
+                  created_at
+                FROM page_index
+                WHERE app_id=$1 AND page_name=$2
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                app_id,
+                page_name,
+            )
+            if not row:
+                return None
+
+            page_id = str(row["page_id"])
+            item_rows = await conn.fetch(
+                """
+                SELECT
+                  element_id,
+                  element_name,
+                  tag,
+                  text,
+                  normalized_text,
+                  attr_id,
+                  attr_name,
+                  class_tokens,
+                  role,
+                  aria_label,
+                  placeholder,
+                  container_path,
+                  parent_signature,
+                  neighbor_text,
+                  position_signature,
+                  xpath,
+                  css,
+                  fingerprint_hash,
+                  metadata_json
+                FROM indexed_elements
+                WHERE page_id=$1::uuid
+                ORDER BY ordinal ASC, id ASC
+                """,
+                page_id,
+            )
+            elements: list[IndexedElement] = []
+            for item in item_rows:
+                payload = {
+                    "element_id": str(item.get("element_id") or ""),
+                    "element_name": str(item.get("element_name") or ""),
+                    "tag": str(item.get("tag") or ""),
+                    "text": str(item.get("text") or ""),
+                    "normalized_text": str(item.get("normalized_text") or ""),
+                    "attr_id": str(item.get("attr_id") or ""),
+                    "attr_name": str(item.get("attr_name") or ""),
+                    "class_tokens": self._decode_json(item.get("class_tokens")) or [],
+                    "role": str(item.get("role") or ""),
+                    "aria_label": str(item.get("aria_label") or ""),
+                    "placeholder": str(item.get("placeholder") or ""),
+                    "container_path": str(item.get("container_path") or ""),
+                    "parent_signature": str(item.get("parent_signature") or ""),
+                    "neighbor_text": str(item.get("neighbor_text") or ""),
+                    "position_signature": str(item.get("position_signature") or ""),
+                    "xpath": str(item.get("xpath") or ""),
+                    "css": str(item.get("css") or ""),
+                    "fingerprint_hash": str(item.get("fingerprint_hash") or ""),
+                    "metadata_json": self._decode_json(item.get("metadata_json")) or {},
+                }
+                elements.append(IndexedElement.from_dict(payload))
+
+            created_at = row.get("created_at")
+            created_at_value = created_at if isinstance(created_at, datetime) else datetime.now(UTC)
+            return PageIndex(
+                id=page_id,
+                app_id=str(row.get("app_id") or ""),
+                page_name=str(row.get("page_name") or ""),
+                dom_hash=str(row.get("dom_hash") or ""),
+                snapshot_version=str(row.get("snapshot_version") or "v1"),
+                created_at=created_at_value,
+                elements=elements,
+            )
+
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        pool = await self._ensure_pool()
+        page_id = str(page_index.id or uuid.uuid4())
+        created_at = page_index.created_at if isinstance(page_index.created_at, datetime) else datetime.now(UTC)
+        async with pool.acquire() as conn:
+            stored_page_id = await conn.fetchval(
+                """
+                INSERT INTO page_index (
+                  page_id,
+                  app_id,
+                  page_name,
+                  dom_hash,
+                  snapshot_version,
+                  created_at
+                )
+                VALUES ($1::uuid,$2,$3,$4,$5,$6::timestamptz)
+                ON CONFLICT (app_id, page_name)
+                DO UPDATE SET
+                  dom_hash = EXCLUDED.dom_hash,
+                  snapshot_version = EXCLUDED.snapshot_version,
+                  created_at = EXCLUDED.created_at
+                RETURNING page_id
+                """,
+                page_id,
+                page_index.app_id,
+                page_index.page_name,
+                page_index.dom_hash,
+                page_index.snapshot_version,
+                created_at,
+            )
+            page_uuid = str(stored_page_id)
+            await conn.execute("DELETE FROM indexed_elements WHERE page_id=$1::uuid", page_uuid)
+            for ordinal, element in enumerate(page_index.elements):
+                payload = element.to_dict()
+                await conn.execute(
+                    """
+                    INSERT INTO indexed_elements (
+                      page_id,
+                      ordinal,
+                      element_id,
+                      element_name,
+                      tag,
+                      text,
+                      normalized_text,
+                      attr_id,
+                      attr_name,
+                      class_tokens,
+                      role,
+                      aria_label,
+                      placeholder,
+                      container_path,
+                      parent_signature,
+                      neighbor_text,
+                      position_signature,
+                      xpath,
+                      css,
+                      fingerprint_hash,
+                      metadata_json
+                    )
+                    VALUES (
+                      $1::uuid,
+                      $2,
+                      $3,
+                      $4,
+                      $5,
+                      $6,
+                      $7,
+                      $8,
+                      $9,
+                      $10::jsonb,
+                      $11,
+                      $12,
+                      $13,
+                      $14,
+                      $15,
+                      $16,
+                      $17,
+                      $18,
+                      $19,
+                      $20,
+                      $21::jsonb
+                    )
+                    """,
+                    page_uuid,
+                    int(ordinal),
+                    payload.get("element_id"),
+                    payload.get("element_name"),
+                    payload.get("tag"),
+                    payload.get("text"),
+                    payload.get("normalized_text"),
+                    payload.get("attr_id"),
+                    payload.get("attr_name"),
+                    self._json_or_empty(payload.get("class_tokens") or []),
+                    payload.get("role"),
+                    payload.get("aria_label"),
+                    payload.get("placeholder"),
+                    payload.get("container_path"),
+                    payload.get("parent_signature"),
+                    payload.get("neighbor_text"),
+                    payload.get("position_signature"),
+                    payload.get("xpath"),
+                    payload.get("css"),
+                    payload.get("fingerprint_hash"),
+                    self._json_or_empty(payload.get("metadata_json") or {}),
+                )
 
     async def log_event(self, event: dict[str, Any]) -> None:
         pool = await self._ensure_pool()
@@ -629,6 +824,41 @@ class PostgresMetadataRepository(MetadataRepository):
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+        CREATE TABLE IF NOT EXISTS page_index (
+          page_id uuid PRIMARY KEY,
+          app_id text NOT NULL,
+          page_name text NOT NULL,
+          dom_hash text NOT NULL,
+          snapshot_version text NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          UNIQUE(app_id, page_name)
+        );
+
+        CREATE TABLE IF NOT EXISTS indexed_elements (
+          id bigserial PRIMARY KEY,
+          page_id uuid NOT NULL REFERENCES page_index(page_id) ON DELETE CASCADE,
+          ordinal int NOT NULL DEFAULT 0,
+          element_id text NOT NULL,
+          element_name text,
+          tag text,
+          text text,
+          normalized_text text,
+          attr_id text,
+          attr_name text,
+          class_tokens jsonb NOT NULL DEFAULT '[]'::jsonb,
+          role text,
+          aria_label text,
+          placeholder text,
+          container_path text,
+          parent_signature text,
+          neighbor_text text,
+          position_signature text,
+          xpath text,
+          css text,
+          fingerprint_hash text,
+          metadata_json jsonb NOT NULL DEFAULT '{}'::jsonb
+        );
+
         CREATE TABLE IF NOT EXISTS elements (
           id uuid PRIMARY KEY,
           app_id text NOT NULL,
@@ -722,6 +952,12 @@ class PostgresMetadataRepository(MetadataRepository):
 
         CREATE INDEX IF NOT EXISTS idx_elements_lookup
           ON elements (app_id, page_name, element_name);
+
+        CREATE INDEX IF NOT EXISTS idx_page_index_lookup
+          ON page_index (app_id, page_name, created_at DESC);
+
+        CREATE INDEX IF NOT EXISTS idx_indexed_elements_page
+          ON indexed_elements (page_id, ordinal);
 
         CREATE INDEX IF NOT EXISTS idx_elements_page_field
           ON elements (app_id, page_name, field_type, success_count DESC, last_seen DESC);

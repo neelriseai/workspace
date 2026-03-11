@@ -44,6 +44,7 @@ def _llm_only_rag_config() -> HealerConfig:
     cfg.stages.metadata = False
     cfg.stages.rules = False
     cfg.stages.fingerprint = False
+    cfg.stages.page_index = False
     cfg.stages.signature = False
     cfg.stages.dom_mining = False
     cfg.stages.defaults = False

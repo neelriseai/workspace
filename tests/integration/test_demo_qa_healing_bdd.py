@@ -542,16 +542,41 @@ def report_and_logs_should_show_xpath_failure_reason(
 def verify_trace_stages(scenario_state: dict[str, Any], healer: XPathHealerFacade) -> None:
     recovered_by_element: dict[str, Recovered] = scenario_state["recovered"]
     assert recovered_by_element, "No healed elements captured for trace verification."
+    stages_cfg = healer.config.stages
+    deterministic_enabled = any(
+        [
+            stages_cfg.fallback,
+            stages_cfg.metadata,
+            stages_cfg.rules,
+            stages_cfg.fingerprint,
+            getattr(stages_cfg, "page_index", False),
+            stages_cfg.signature,
+            stages_cfg.dom_mining,
+            stages_cfg.defaults,
+            stages_cfg.position,
+        ]
+    )
+    model_only_mode = bool(stages_cfg.rag) and not deterministic_enabled
+    expected_first_stage = "rag" if model_only_mode else "fallback"
 
     for element_name, recovered in recovered_by_element.items():
         trace = recovered.trace
         assert trace, f"Trace is empty for {element_name}"
-        assert trace[0].stage == "fallback", f"First stage should be fallback for {element_name}"
-        assert trace[0].status == "fail", f"Fallback must fail for intentionally broken locator: {element_name}"
+        assert trace[0].stage == expected_first_stage, (
+            f"First stage should be {expected_first_stage} for {element_name}"
+        )
+        if expected_first_stage == "fallback":
+            assert trace[0].status == "fail", f"Fallback must fail for intentionally broken locator: {element_name}"
 
         ok_entries = [entry for entry in trace if entry.status == "ok"]
         assert ok_entries, f"No successful stage found in trace for {element_name}"
-        assert any(entry.stage in {"rules", "defaults", "metadata", "signature", "dom_mining", "position"} for entry in ok_entries)
+        if model_only_mode:
+            assert any(entry.stage == "rag" for entry in ok_entries)
+        else:
+            assert any(
+                entry.stage in {"rules", "defaults", "metadata", "signature", "dom_mining", "position", "page_index"}
+                for entry in ok_entries
+            )
         assert any(entry.strategy_id == recovered.strategy_id for entry in ok_entries), (
             f"Recovered strategy {recovered.strategy_id} not found among successful trace entries for {element_name}"
         )
@@ -567,4 +592,7 @@ def verify_trace_stages(scenario_state: dict[str, Any], healer: XPathHealerFacad
         stage_names = {event.get("stage") for event in repo.events}
         assert "recover_start" in stage_names
         assert "recover_end" in stage_names
-        assert "fallback" in stage_names
+        if model_only_mode:
+            assert "rag" in stage_names
+        else:
+            assert "fallback" in stage_names

@@ -22,6 +22,7 @@ def test_stage_profile_llm_only(monkeypatch) -> None:  # noqa: ANN001
     assert cfg.stages.metadata is False
     assert cfg.stages.rules is False
     assert cfg.stages.fingerprint is False
+    assert cfg.stages.page_index is False
     assert cfg.stages.signature is False
     assert cfg.stages.dom_mining is False
     assert cfg.stages.defaults is False
@@ -37,6 +38,7 @@ async def test_recover_with_only_rag_stage_enabled() -> None:
     cfg.stages.metadata = False
     cfg.stages.rules = False
     cfg.stages.fingerprint = False
+    cfg.stages.page_index = False
     cfg.stages.signature = False
     cfg.stages.dom_mining = False
     cfg.stages.defaults = False

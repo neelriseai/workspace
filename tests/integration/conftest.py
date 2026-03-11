@@ -19,6 +19,7 @@ pytest.importorskip("playwright.async_api")
 from playwright.async_api import async_playwright
 
 from tests.integration.settings import IntegrationSettings, ensure_artifact_dirs, load_settings
+from xpath_healer.core.models import PageIndex
 from xpath_healer.store.dual_repository import DualMetadataRepository
 from xpath_healer.store.json_repository import JsonMetadataRepository
 from xpath_healer.store.pg_repository import PostgresMetadataRepository
@@ -200,6 +201,56 @@ class LoggedMetadataRepository(MetadataRepository):
                     "page_name": page_name,
                     "field_type": field_type,
                     "limit": limit,
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
+        try:
+            out = await self.backend.get_page_index(app_id, page_name)
+            self._record_db_op(
+                operation="get_page_index",
+                status="ok",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "result": "hit" if out else "miss",
+                },
+            )
+            return out
+        except Exception as exc:
+            self._record_db_op(
+                operation="get_page_index",
+                status="fail",
+                details={
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "error": str(exc),
+                },
+            )
+            raise
+
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        try:
+            await self.backend.upsert_page_index(page_index)
+            self._record_db_op(
+                operation="upsert_page_index",
+                status="ok",
+                details={
+                    "app_id": page_index.app_id,
+                    "page_name": page_index.page_name,
+                    "element_count": len(page_index.elements),
+                    "dom_hash": page_index.dom_hash[:12],
+                },
+            )
+        except Exception as exc:
+            self._record_db_op(
+                operation="upsert_page_index",
+                status="fail",
+                details={
+                    "app_id": page_index.app_id,
+                    "page_name": page_index.page_name,
                     "error": str(exc),
                 },
             )

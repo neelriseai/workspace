@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from xpath_healer.core.models import ElementMeta
+from xpath_healer.core.models import ElementMeta, PageIndex
 from xpath_healer.store.repository import MetadataRepository
 
 
 class InMemoryMetadataRepository(MetadataRepository):
     def __init__(self) -> None:
         self._items: dict[tuple[str, str, str], ElementMeta] = {}
+        self._page_indexes: dict[tuple[str, str], PageIndex] = {}
         self.events: list[dict[str, Any]] = []
 
     async def find(self, app_id: str, page_name: str, element_name: str) -> ElementMeta | None:
@@ -39,6 +40,11 @@ class InMemoryMetadataRepository(MetadataRepository):
                 break
         return matches
 
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
+        return self._page_indexes.get((app_id, page_name))
+
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        self._page_indexes[page_index.key()] = page_index
+
     async def log_event(self, event: dict[str, Any]) -> None:
         self.events.append(event)
-

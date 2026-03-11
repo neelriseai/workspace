@@ -2,7 +2,9 @@ import pytest
 
 from tests.unit.fakes import FakeElement, FakePage
 from xpath_healer.api.facade import XPathHealerFacade
+from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.models import LocatorSpec
+from xpath_healer.store.memory_repository import InMemoryMetadataRepository
 
 
 @pytest.mark.asyncio
@@ -15,7 +17,9 @@ async def test_recover_with_attribute_then_metadata_reuse() -> None:
     )
     page.add_element(username, selectors=['[data-testid="username-input"]', "input"])
 
-    facade = XPathHealerFacade()
+    cfg = HealerConfig()
+    cfg.stages.page_index = False
+    facade = XPathHealerFacade(config=cfg, repository=InMemoryMetadataRepository())
     fallback = LocatorSpec(kind="xpath", value="//input[@id='missing-id']")
 
     first = await facade.recover_locator(

@@ -155,6 +155,38 @@
           },
           {
             "timestamp": "2026-03-08T01:00:34.914459+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-10T23:23:16.020887+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-10T23:29:17.343332+00:00",
+            "strategy_id": "metadata.last_good",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-10T23:33:13.862136+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.726,
+            "stability_score": 0.64,
+            "similarity_score": 0.35,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-10T23:46:38.447805+00:00",
             "overall_score": 0.726,
             "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
@@ -163,9 +195,10 @@
           }
         ]
       },
-      "last_seen": "2026-03-08T01:00:34.846537+00:00",
-      "success_count": 8,
-      "fail_count": 2
+      "last_seen": "2026-03-10T23:46:38.310065+00:00",
+      "success_count": 12,
+      "fail_count": 3
     }
-  }
+  },
+  "page_index": null
 }

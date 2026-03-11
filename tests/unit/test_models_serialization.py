@@ -1,4 +1,11 @@
-from xpath_healer.core.models import ElementMeta, ElementSignature, HealingHints, LocatorSpec
+from xpath_healer.core.models import (
+    ElementMeta,
+    ElementSignature,
+    HealingHints,
+    IndexedElement,
+    LocatorSpec,
+    PageIndex,
+)
 
 
 def test_locator_spec_roundtrip_and_hash_stability() -> None:
@@ -33,3 +40,31 @@ def test_element_meta_roundtrip() -> None:
     assert restored.signature is not None
     assert restored.signature.stable_attrs["data-testid"] == "submit"
 
+
+def test_page_index_roundtrip() -> None:
+    page_index = PageIndex(
+        app_id="app",
+        page_name="checkout",
+        dom_hash="abc123",
+        elements=[
+            IndexedElement(
+                element_id="el-1",
+                element_name="submit_order",
+                tag="button",
+                text="Submit Order",
+                normalized_text="submit order",
+                attr_id="submit-order",
+                css='[id="submit-order"]',
+                xpath='//*[@id="submit-order"]',
+                metadata_json={"attrs": {"id": "submit-order"}},
+            )
+        ],
+    )
+
+    payload = page_index.to_dict()
+    restored = PageIndex.from_dict(payload)
+    assert restored.app_id == "app"
+    assert restored.page_name == "checkout"
+    assert restored.dom_hash == "abc123"
+    assert len(restored.elements) == 1
+    assert restored.elements[0].element_name == "submit_order"

@@ -7,6 +7,7 @@ from logging import Logger
 
 from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.models import HealingHints
+from xpath_healer.core.page_index import PageIndexer
 from xpath_healer.core.signature import SignatureExtractor
 from xpath_healer.core.similarity import SimilarityService
 from xpath_healer.core.validator import XPathValidator
@@ -24,6 +25,7 @@ class StrategyContext:
     signature_extractor: SignatureExtractor
     dom_snapshotter: DomSnapshotter
     dom_miner: DomMiner
+    page_indexer: PageIndexer
     logger: Logger
     templates: dict[str, list[dict]] = field(default_factory=dict)
     hints_index: dict[str, HealingHints] = field(default_factory=dict)
@@ -61,4 +63,3 @@ class StrategyContext:
             if hint:
                 return hint
         return HealingHints(attr_priority_order=list(self.config.attribute_priority))
-

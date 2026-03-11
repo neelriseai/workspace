@@ -78,6 +78,7 @@ class StageConfig:
     metadata: bool = True
     rules: bool = True
     fingerprint: bool = True
+    page_index: bool = True
     signature: bool = True
     dom_mining: bool = True
     defaults: bool = True
@@ -202,6 +203,7 @@ class HealerConfig:
             cfg.stages.metadata = False
             cfg.stages.rules = False
             cfg.stages.fingerprint = False
+            cfg.stages.page_index = False
             cfg.stages.signature = False
             cfg.stages.dom_mining = False
             cfg.stages.defaults = False
@@ -212,6 +214,7 @@ class HealerConfig:
         cfg.stages.metadata = coerce_bool(os.getenv(f"{prefix}STAGE_METADATA_ENABLED"), cfg.stages.metadata)
         cfg.stages.rules = coerce_bool(os.getenv(f"{prefix}STAGE_RULES_ENABLED"), cfg.stages.rules)
         cfg.stages.fingerprint = coerce_bool(os.getenv(f"{prefix}STAGE_FINGERPRINT_ENABLED"), cfg.stages.fingerprint)
+        cfg.stages.page_index = coerce_bool(os.getenv(f"{prefix}STAGE_PAGE_INDEX_ENABLED"), cfg.stages.page_index)
         cfg.stages.signature = coerce_bool(os.getenv(f"{prefix}STAGE_SIGNATURE_ENABLED"), cfg.stages.signature)
         cfg.stages.dom_mining = coerce_bool(os.getenv(f"{prefix}STAGE_DOM_MINING_ENABLED"), cfg.stages.dom_mining)
         cfg.stages.defaults = coerce_bool(os.getenv(f"{prefix}STAGE_DEFAULTS_ENABLED"), cfg.stages.defaults)

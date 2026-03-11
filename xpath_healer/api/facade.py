@@ -12,6 +12,7 @@ from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.context import StrategyContext
 from xpath_healer.core.healing_service import HealingService
 from xpath_healer.core.models import BuildInput, ElementMeta, HealingHints, Intent, LocatorSpec, Recovered
+from xpath_healer.core.page_index import PageIndexer
 from xpath_healer.core.signature import SignatureExtractor
 from xpath_healer.core.similarity import SimilarityService
 from xpath_healer.core.strategies import (
@@ -57,6 +58,7 @@ class XPathHealerFacade:
         self.signature_extractor = SignatureExtractor()
         self.snapshotter = DomSnapshotter(self.config.dom.cache_ttl_sec)
         self.dom_miner = DomMiner()
+        self.page_indexer = PageIndexer()
 
         self.registry = StrategyRegistry(self._default_strategies())
         self.builder = XPathBuilder(self.registry)
@@ -70,6 +72,7 @@ class XPathHealerFacade:
             signature_extractor=self.signature_extractor,
             dom_snapshotter=self.snapshotter,
             dom_miner=self.dom_miner,
+            page_indexer=self.page_indexer,
             logger=self.logger,
             templates=templates or {},
             hints_index=hints_index or {},

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from xpath_healer.core.models import ElementMeta
+from xpath_healer.core.models import ElementMeta, PageIndex
 
 
 class MetadataRepository(ABC):
@@ -28,6 +28,13 @@ class MetadataRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def log_event(self, event: dict[str, Any]) -> None:
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
         raise NotImplementedError
 
+    @abstractmethod
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def log_event(self, event: dict[str, Any]) -> None:
+        raise NotImplementedError

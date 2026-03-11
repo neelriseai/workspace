@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from xpath_healer.core.models import ElementMeta
+from xpath_healer.core.models import ElementMeta, PageIndex
 from xpath_healer.store.repository import MetadataRepository
 
 
@@ -63,6 +63,21 @@ class JsonMetadataRepository(MetadataRepository):
                 break
         return out
 
+    async def get_page_index(self, app_id: str, page_name: str) -> PageIndex | None:
+        payload = self._read_page_file(app_id, page_name)
+        raw = payload.get("page_index")
+        if not isinstance(raw, dict):
+            return None
+        try:
+            return PageIndex.from_dict(raw)
+        except Exception:
+            return None
+
+    async def upsert_page_index(self, page_index: PageIndex) -> None:
+        payload = self._read_page_file(page_index.app_id, page_index.page_name)
+        payload["page_index"] = page_index.to_dict()
+        self._write_page_file(page_index.app_id, page_index.page_name, payload)
+
     async def log_event(self, event: dict[str, Any]) -> None:
         self.events.append(event)
         self.events_file.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +93,7 @@ class JsonMetadataRepository(MetadataRepository):
     def _read_page_file(self, app_id: str, page_name: str) -> dict[str, Any]:
         path = self._page_file(app_id, page_name)
         if not path.exists():
-            return {"app_id": app_id, "page_name": page_name, "elements": {}}
+            return {"app_id": app_id, "page_name": page_name, "elements": {}, "page_index": None}
         try:
             with path.open("r", encoding="utf-8") as fh:
                 raw = json.load(fh)
@@ -87,9 +102,10 @@ class JsonMetadataRepository(MetadataRepository):
             raw.setdefault("app_id", app_id)
             raw.setdefault("page_name", page_name)
             raw.setdefault("elements", {})
+            raw.setdefault("page_index", None)
             return raw
         except Exception:
-            return {"app_id": app_id, "page_name": page_name, "elements": {}}
+            return {"app_id": app_id, "page_name": page_name, "elements": {}, "page_index": None}
 
     def _write_page_file(self, app_id: str, page_name: str, payload: dict[str, Any]) -> None:
         path = self._page_file(app_id, page_name)
@@ -97,4 +113,3 @@ class JsonMetadataRepository(MetadataRepository):
         with tmp.open("w", encoding="utf-8") as fh:
             json.dump(payload, fh, indent=2, ensure_ascii=True)
         tmp.replace(path)
-

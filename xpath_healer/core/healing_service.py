@@ -84,7 +84,15 @@ class HealingService:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 4) signature similarity candidates
+        # 4) page index lookup + weighted deterministic ranking
+        if self._stage_enabled(ctx, "page_index"):
+            page_index_candidates = await self._page_index_candidates(ctx, inp, existing_meta)
+            success = await self._evaluate_candidates_parallel(ctx, inp, page_index_candidates, trace)
+            if success:
+                candidate, validation = success
+                return await self._on_success(ctx, inp, candidate, validation, trace)
+
+        # 5) signature similarity candidates
         if self._stage_enabled(ctx, "signature"):
             signature_candidates = await self._signature_candidates(ctx, inp, existing_meta)
             success = await self._evaluate_candidates(ctx, inp, signature_candidates, trace)
@@ -92,7 +100,7 @@ class HealingService:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 5) first-run robust DOM mining
+        # 6) first-run robust DOM mining
         if self._stage_enabled(ctx, "dom_mining"):
             dom_candidates = await self._dom_mining_candidates(ctx, inp)
             success = await self._evaluate_candidates(ctx, inp, dom_candidates, trace)
@@ -100,7 +108,7 @@ class HealingService:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 6) code defaults
+        # 7) code defaults
         if self._stage_enabled(ctx, "defaults"):
             default_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"defaults"})
             success = await self._evaluate_candidates_parallel(ctx, inp, default_candidates, trace)
@@ -108,7 +116,7 @@ class HealingService:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 7) position fallback
+        # 8) position fallback
         if self._stage_enabled(ctx, "position"):
             position_candidates = await self.builder.build_all_candidates(ctx, inp, allowed_stages={"position"})
             success = await self._evaluate_candidates(ctx, inp, position_candidates, trace)
@@ -116,7 +124,7 @@ class HealingService:
                 candidate, validation = success
                 return await self._on_success(ctx, inp, candidate, validation, trace)
 
-        # 8) Optional RAG stage (final fallback)
+        # 9) Optional RAG stage (final fallback)
         if self._stage_enabled(ctx, "rag") and ctx.config.rag.enabled and ctx.rag_assist:
             deep_default = bool(getattr(ctx.config.prompt, "graph_deep_default", False))
             trace_start = len(trace)
@@ -344,12 +352,15 @@ class HealingService:
         validation: ValidationResult | None = None
         while attempts_used < max_attempts:
             attempts_used += 1
+            strict_single_match = inp.intent.strict_single_match
+            if strict_single_match is None and inp.hints is not None:
+                strict_single_match = inp.hints.strict_single_match
             validation = await ctx.validator.validate_candidate(
                 inp.page,
                 candidate.locator,
                 inp.field_type,
                 inp.intent,
-                strict_single_match=inp.hints.strict_single_match if inp.hints else None,
+                strict_single_match=strict_single_match,
             )
             if validation.ok:
                 break
@@ -516,6 +527,111 @@ class HealingService:
         if meta.robust_locator:
             return meta.robust_locator
         return meta.last_good_locator
+
+    async def _page_index_candidates(
+        self,
+        ctx: StrategyContext,
+        inp: BuildInput,
+        meta: ElementMeta | None,
+    ) -> list[CandidateSpec]:
+        if inp.page is None:
+            return []
+
+        html = await ctx.dom_snapshotter.capture(inp.page)
+        if not html:
+            return []
+
+        dom_hash = ctx.page_indexer.dom_hash(html)
+        cached_index = None
+        read_error: str | None = None
+        try:
+            cached_index = await ctx.repository.get_page_index(inp.app_id, inp.page_name)
+        except Exception as exc:
+            read_error = str(exc)
+
+        refreshed = False
+        page_index = cached_index
+        if page_index is None or page_index.dom_hash != dom_hash:
+            page_index = ctx.page_indexer.build_page_index(
+                inp.app_id,
+                inp.page_name,
+                html,
+                dom_hash_value=dom_hash,
+            )
+            try:
+                await ctx.repository.upsert_page_index(page_index)
+                refreshed = True
+            except Exception:
+                # Continue with in-memory index data for this run.
+                pass
+
+        ranked = ctx.page_indexer.rank_candidates(page_index, inp, meta)
+        candidate_list_payload = [
+            {
+                "rank": rank + 1,
+                "score": item.score,
+                "element_id": item.element.element_id,
+                "element_name": item.element.element_name,
+                "tag": item.element.tag,
+                "text": item.element.text[:140],
+                "css": item.element.css,
+                "xpath": item.element.xpath,
+                "ranking_scores": item.breakdown,
+            }
+            for rank, item in enumerate(ranked)
+        ]
+        if ranked:
+            await self._log_stage_event(
+                ctx,
+                inp.correlation_id,
+                stage="page_index_lookup",
+                status="ok",
+                inp=inp,
+                details={
+                    "dom_hash": dom_hash,
+                    "refreshed": refreshed,
+                    "read_error": read_error,
+                    "index_size": len(page_index.elements),
+                    "candidate_count": len(ranked),
+                    "candidate_list": candidate_list_payload,
+                    "failed_locator": inp.fallback.to_dict(),
+                },
+            )
+        else:
+            await self._log_stage_event(
+                ctx,
+                inp.correlation_id,
+                stage="page_index_lookup",
+                status="fail",
+                inp=inp,
+                details={
+                    "dom_hash": dom_hash,
+                    "refreshed": refreshed,
+                    "read_error": read_error,
+                    "index_size": len(page_index.elements),
+                    "reason": "no_ranked_candidates",
+                },
+            )
+
+        out: list[CandidateSpec] = []
+        for rank, item in enumerate(ranked, start=1):
+            out.append(
+                CandidateSpec(
+                    strategy_id=f"page_index.rank:{item.element.element_id}",
+                    locator=item.locator,
+                    stage="page_index",
+                    score=item.score,
+                    details={
+                        "rank": rank,
+                        "index_id": page_index.id,
+                        "indexed_element_id": item.element.element_id,
+                        "indexed_element_name": item.element.element_name,
+                        "ranking_scores": item.breakdown,
+                        "source": "page_index",
+                    },
+                )
+            )
+        return out
 
     async def _signature_candidates(
         self,
@@ -838,10 +954,11 @@ class HealingService:
         validation: ValidationResult,
         trace: list[StrategyTrace],
     ) -> Recovered:
+        resolved_locator = self._resolve_selected_locator(selected.locator, validation)
         meta = await self._persist_success(
             ctx,
             inp,
-            selected.locator,
+            resolved_locator,
             selected.strategy_id,
             validation,
             strategy_score=selected.score,
@@ -853,13 +970,13 @@ class HealingService:
             status="ok",
             inp=inp,
             score=selected.score,
-            details={"strategy_id": selected.strategy_id, "locator": selected.locator.to_dict()},
+            details={"strategy_id": selected.strategy_id, "locator": resolved_locator.to_dict()},
         )
         return Recovered(
             status="success",
             correlation_id=inp.correlation_id,
-            locator_spec=selected.locator,
-            playwright_locator=selected.locator.to_playwright_locator(inp.page),
+            locator_spec=resolved_locator,
+            playwright_locator=resolved_locator.to_playwright_locator(inp.page),
             metadata=meta,
             strategy_id=selected.strategy_id,
             trace=trace,
@@ -1184,3 +1301,22 @@ class HealingService:
         except Exception:
             return None
         return min(max(parsed, 0.0), 1.0)
+
+    @staticmethod
+    def _resolve_selected_locator(locator: LocatorSpec, validation: ValidationResult) -> LocatorSpec:
+        if not validation.ok:
+            return locator
+        if validation.matched_count <= 1:
+            return locator
+        if validation.chosen_index is None:
+            return locator
+        if "nth" in (locator.options or {}):
+            return locator
+        options = dict(locator.options or {})
+        options["nth"] = int(validation.chosen_index)
+        return LocatorSpec(
+            kind=locator.kind,
+            value=locator.value,
+            options=options,
+            scope=locator.scope,
+        )

@@ -402,3 +402,121 @@ class CandidateSpec:
     stage: str
     score: float | None = None
     details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class IndexedElement:
+    element_id: str
+    element_name: str
+    tag: str
+    text: str = ""
+    normalized_text: str = ""
+    attr_id: str = ""
+    attr_name: str = ""
+    class_tokens: list[str] = field(default_factory=list)
+    role: str = ""
+    aria_label: str = ""
+    placeholder: str = ""
+    container_path: str = ""
+    parent_signature: str = ""
+    neighbor_text: str = ""
+    position_signature: str = ""
+    xpath: str = ""
+    css: str = ""
+    fingerprint_hash: str = ""
+    metadata_json: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "element_id": self.element_id,
+            "element_name": self.element_name,
+            "tag": self.tag,
+            "text": self.text,
+            "normalized_text": self.normalized_text,
+            "attr_id": self.attr_id,
+            "attr_name": self.attr_name,
+            "class_tokens": list(self.class_tokens),
+            "role": self.role,
+            "aria_label": self.aria_label,
+            "placeholder": self.placeholder,
+            "container_path": self.container_path,
+            "parent_signature": self.parent_signature,
+            "neighbor_text": self.neighbor_text,
+            "position_signature": self.position_signature,
+            "xpath": self.xpath,
+            "css": self.css,
+            "fingerprint_hash": self.fingerprint_hash,
+            "metadata_json": dict(self.metadata_json or {}),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> IndexedElement:
+        return cls(
+            element_id=str(payload.get("element_id") or str(uuid.uuid4())),
+            element_name=str(payload.get("element_name") or ""),
+            tag=str(payload.get("tag") or ""),
+            text=str(payload.get("text") or ""),
+            normalized_text=str(payload.get("normalized_text") or ""),
+            attr_id=str(payload.get("attr_id") or ""),
+            attr_name=str(payload.get("attr_name") or ""),
+            class_tokens=[str(token) for token in list(payload.get("class_tokens") or []) if str(token).strip()],
+            role=str(payload.get("role") or ""),
+            aria_label=str(payload.get("aria_label") or ""),
+            placeholder=str(payload.get("placeholder") or ""),
+            container_path=str(payload.get("container_path") or ""),
+            parent_signature=str(payload.get("parent_signature") or ""),
+            neighbor_text=str(payload.get("neighbor_text") or ""),
+            position_signature=str(payload.get("position_signature") or ""),
+            xpath=str(payload.get("xpath") or ""),
+            css=str(payload.get("css") or ""),
+            fingerprint_hash=str(payload.get("fingerprint_hash") or ""),
+            metadata_json=dict(payload.get("metadata_json") or {}),
+        )
+
+
+@dataclass(slots=True)
+class PageIndex:
+    app_id: str
+    page_name: str
+    dom_hash: str
+    snapshot_version: str = "v1"
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    elements: list[IndexedElement] = field(default_factory=list)
+
+    def key(self) -> tuple[str, str]:
+        return (self.app_id, self.page_name)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "app_id": self.app_id,
+            "page_name": self.page_name,
+            "dom_hash": self.dom_hash,
+            "snapshot_version": self.snapshot_version,
+            "created_at": self.created_at.isoformat(),
+            "elements": [item.to_dict() for item in self.elements],
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> PageIndex:
+        created_at_raw = payload.get("created_at")
+        created_at = datetime.fromisoformat(created_at_raw) if isinstance(created_at_raw, str) else datetime.now(UTC)
+        elements_raw = list(payload.get("elements") or [])
+        elements: list[IndexedElement] = []
+        for item in elements_raw:
+            if not isinstance(item, dict):
+                continue
+            try:
+                elements.append(IndexedElement.from_dict(item))
+            except Exception:
+                continue
+        return cls(
+            id=str(payload.get("id") or str(uuid.uuid4())),
+            app_id=str(payload.get("app_id") or ""),
+            page_name=str(payload.get("page_name") or ""),
+            dom_hash=str(payload.get("dom_hash") or ""),
+            snapshot_version=str(payload.get("snapshot_version") or "v1"),
+            created_at=created_at,
+            elements=elements,
+        )
