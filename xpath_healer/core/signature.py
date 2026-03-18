@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from xpath_healer.core.automation import AutomationAdapter
 from xpath_healer.core.models import ElementSignature, LocatorSpec
 from xpath_healer.utils.text import normalize_text
 
@@ -22,8 +23,11 @@ class SignatureExtractor:
         "aria-colindex",
     )
 
+    def __init__(self, adapter: AutomationAdapter) -> None:
+        self.adapter = adapter
+
     async def capture(self, page: Any, locator_spec: LocatorSpec) -> ElementSignature | None:
-        locator = locator_spec.to_playwright_locator(page)
+        locator = await self.adapter.resolve_locator(page, locator_spec)
         count = await locator.count()
         if count <= 0:
             return None

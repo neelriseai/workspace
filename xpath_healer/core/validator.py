@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from xpath_healer.core.automation import AutomationAdapter
 from xpath_healer.core.config import ValidatorConfig
 from xpath_healer.core.models import INTERACTIVE_FIELD_TYPES, Intent, LocatorSpec, ValidationResult
 from xpath_healer.utils.text import contains_match, exact_match, normalize_text, token_subset_match
 
 
 class XPathValidator:
-    def __init__(self, config: ValidatorConfig) -> None:
+    def __init__(self, config: ValidatorConfig, adapter: AutomationAdapter) -> None:
         self.config = config
+        self.adapter = adapter
 
     async def validate_candidate(
         self,
@@ -22,10 +24,13 @@ class XPathValidator:
         strict_single_match: bool | None = None,
     ) -> ValidationResult:
         try:
-            pw_locator = locator.to_playwright_locator(page)
-            matched_count = await pw_locator.count()
+            runtime_locator = await self.adapter.resolve_locator(page, locator)
+            matched_count = await runtime_locator.count()
         except Exception as exc:
-            return ValidationResult.fail(["locator_error"], details={"error": str(exc)})
+            return ValidationResult.fail(
+                [self._locator_error_reason(exc)],
+                details={"error": str(exc)},
+            )
 
         if matched_count <= 0:
             return ValidationResult.fail(["no_match"])
@@ -38,7 +43,7 @@ class XPathValidator:
         if strict and matched_count > 1 and nth_from_locator is None and intent.occurrence == 0:
             return ValidationResult.fail(["multiple_matches"], matched_count=matched_count)
 
-        element = pw_locator.nth(chosen_index)
+        element = runtime_locator.nth(chosen_index)
 
         visibility = await self._safe_bool_call(element, "is_visible", default=True)
         if self.config.require_visible and not visibility:
@@ -185,7 +190,10 @@ class XPathValidator:
         if axis_hint in {"left", "right", "above", "below"}:
             if not self.config.geometry.enabled:
                 return ValidationResult.success(matched_count=1, chosen_index=0)
-            label_locator = page.get_by_text(intent.label, exact=False)
+            label_locator = await self.adapter.resolve_locator(
+                page,
+                LocatorSpec(kind="text", value=intent.label, options={"exact": False}),
+            )
             label_count = await label_locator.count()
             if label_count <= 0:
                 return ValidationResult.fail(["axis_label_not_found"])
@@ -259,12 +267,24 @@ class XPathValidator:
         return exact_match(expected, actual)
 
     @staticmethod
+    def _locator_error_reason(exc: Exception) -> str:
+        text = normalize_text(str(exc))
+        if "stale" in text and "element" in text:
+            return "stale_element"
+        if "timeout" in text:
+            return "locator_timeout"
+        return "locator_error"
+
+    @staticmethod
     async def _safe_bool_call(obj: Any, method_name: str, default: bool) -> bool:
         method = getattr(obj, method_name, None)
         if not method:
             return default
         try:
-            return bool(await method())
+            result = method()
+            if hasattr(result, "__await__"):
+                result = await result
+            return bool(result)
         except Exception:
             return default
 
@@ -275,8 +295,12 @@ class XPathValidator:
             return default
         try:
             if arg is None:
-                return await method(script)
-            return await method(script, arg)
+                out = method(script)
+            else:
+                out = method(script, arg)
+            if hasattr(out, "__await__"):
+                return await out
+            return out
         except Exception:
             return default
 
@@ -286,7 +310,9 @@ class XPathValidator:
         if not method:
             return None
         try:
-            box = await method()
+            box = method()
+            if hasattr(box, "__await__"):
+                box = await box
             if not box:
                 return None
             return {

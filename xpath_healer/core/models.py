@@ -66,45 +66,6 @@ class LocatorSpec:
         canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def to_playwright_locator(self, page_or_locator: Any) -> Any:
-        base = page_or_locator
-        if self.scope:
-            base = self.scope.to_playwright_locator(page_or_locator)
-
-        if self.kind == "css":
-            locator = base.locator(self.value)
-        elif self.kind == "xpath":
-            value = self.value if self.value.startswith("xpath=") else f"xpath={self.value}"
-            locator = base.locator(value)
-        elif self.kind == "pw":
-            locator = base.locator(self.value)
-        elif self.kind == "text":
-            exact = coerce_bool(self.options.get("exact"), default=False)
-            locator = base.get_by_text(self.value, exact=exact)
-        else:  # role
-            role = str(self.options.get("role") or self.value)
-            kwargs: dict[str, Any] = {}
-            for key in ("name", "exact", "checked", "disabled", "pressed", "selected"):
-                if key in self.options:
-                    kwargs[key] = self.options[key]
-            locator = base.get_by_role(role, **kwargs)
-
-        has_text = self.options.get("has_text")
-        if has_text and hasattr(locator, "filter"):
-            locator = locator.filter(has_text=str(has_text))
-
-        nth_value = self.options.get("nth")
-        if nth_value is not None and hasattr(locator, "nth"):
-            locator = locator.nth(int(nth_value))
-
-        if coerce_bool(self.options.get("first"), False) and hasattr(locator, "first"):
-            locator = locator.first
-        if coerce_bool(self.options.get("last"), False) and hasattr(locator, "last"):
-            locator = locator.last
-
-        return locator
-
-
 @dataclass(slots=True)
 class HealingHints:
     attr_priority_order: list[str] = field(default_factory=list)
@@ -362,11 +323,23 @@ class Recovered:
     status: str
     correlation_id: str
     locator_spec: LocatorSpec | None = None
-    playwright_locator: Any = None
+    runtime_locator: Any = None
     metadata: ElementMeta | None = None
     strategy_id: str | None = None
     trace: list[StrategyTrace] = field(default_factory=list)
     error: str | None = None
+
+    @property
+    def playwright_locator(self) -> Any:
+        if self.runtime_locator is None:
+            return None
+        return getattr(self.runtime_locator, "raw", self.runtime_locator)
+
+    @property
+    def raw_locator(self) -> Any:
+        if self.runtime_locator is None:
+            return None
+        return getattr(self.runtime_locator, "raw", self.runtime_locator)
 
     def to_dict(self) -> dict[str, Any]:
         return {

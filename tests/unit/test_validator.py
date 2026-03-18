@@ -1,5 +1,6 @@
 import pytest
 
+from adapters.playwright_python.adapter import PlaywrightPythonAdapter
 from tests.unit.fakes import FakeElement, FakePage
 from xpath_healer.core.config import ValidatorConfig
 from xpath_healer.core.models import Intent, LocatorSpec
@@ -10,7 +11,7 @@ from xpath_healer.core.validator import XPathValidator
 async def test_button_validation_passes_on_text_match() -> None:
     page = FakePage()
     page.add_element(FakeElement(tag="button", text="Submit", attrs={"role": "button"}), selectors=["button"])
-    validator = XPathValidator(ValidatorConfig())
+    validator = XPathValidator(ValidatorConfig(), adapter=PlaywrightPythonAdapter())
 
     result = await validator.validate_candidate(
         page,
@@ -29,7 +30,7 @@ async def test_strict_single_match_rejects_ambiguous_locator() -> None:
     second = FakeElement(tag="input", text="", attrs={"name": "b", "type": "text"})
     page.add_element(first, selectors=["input"])
     page.add_element(second, selectors=["input"])
-    validator = XPathValidator(ValidatorConfig(strict_single_match=True))
+    validator = XPathValidator(ValidatorConfig(strict_single_match=True), adapter=PlaywrightPythonAdapter())
 
     result = await validator.validate_candidate(
         page,
@@ -45,7 +46,7 @@ async def test_strict_single_match_rejects_ambiguous_locator() -> None:
 async def test_textbox_validation_rejects_button() -> None:
     page = FakePage()
     page.add_element(FakeElement(tag="button", text="Run", attrs={"role": "button"}), selectors=["button"])
-    validator = XPathValidator(ValidatorConfig())
+    validator = XPathValidator(ValidatorConfig(), adapter=PlaywrightPythonAdapter())
 
     result = await validator.validate_candidate(
         page,
@@ -55,4 +56,3 @@ async def test_textbox_validation_rejects_button() -> None:
     )
     assert not result.ok
     assert "type_mismatch_textbox" in result.reason_codes
-
