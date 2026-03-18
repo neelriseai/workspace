@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from logging import Logger
 
+from xpath_healer.core.automation import AutomationAdapter
 from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.models import HealingHints
 from xpath_healer.core.page_index import PageIndexer
@@ -19,6 +20,7 @@ from xpath_healer.store.repository import MetadataRepository
 @dataclass(slots=True)
 class StrategyContext:
     config: HealerConfig
+    adapter: AutomationAdapter
     repository: MetadataRepository
     validator: XPathValidator
     similarity: SimilarityService

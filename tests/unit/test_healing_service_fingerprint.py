@@ -2,6 +2,7 @@ import logging
 
 import pytest
 
+from adapters.playwright_python.adapter import PlaywrightPythonAdapter
 from xpath_healer.core.builder import XPathBuilder
 from xpath_healer.core.config import HealerConfig
 from xpath_healer.core.context import StrategyContext
@@ -44,8 +45,10 @@ async def test_fingerprint_stage_builds_candidates_from_structural_match() -> No
         ),
     )
     service = HealingService(builder=XPathBuilder(StrategyRegistry([])))
+    adapter = PlaywrightPythonAdapter()
     ctx = StrategyContext(
         config=HealerConfig(),
+        adapter=adapter,
         repository=repository,
         validator=None,  # type: ignore[arg-type]
         similarity=None,  # type: ignore[arg-type]

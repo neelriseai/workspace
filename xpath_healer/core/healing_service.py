@@ -976,7 +976,7 @@ class HealingService:
             status="success",
             correlation_id=inp.correlation_id,
             locator_spec=resolved_locator,
-            playwright_locator=resolved_locator.to_playwright_locator(inp.page),
+            runtime_locator=await ctx.adapter.resolve_locator(inp.page, resolved_locator),
             metadata=meta,
             strategy_id=selected.strategy_id,
             trace=trace,
@@ -1017,7 +1017,7 @@ class HealingService:
         if inp.hints:
             meta.hints = inp.hints
 
-        live_variants = await self._capture_live_locator_variants(inp.page, locator)
+        live_variants = await self._capture_live_locator_variants(ctx, inp.page, locator)
         meta.locator_variants.update(live_variants)
         live_css = meta.locator_variants.get("live_css")
         if live_css and self._is_weak_css(meta.robust_locator):
@@ -1094,13 +1094,18 @@ class HealingService:
                 }
             )
 
-    async def _capture_live_locator_variants(self, page: Any, locator: LocatorSpec) -> dict[str, LocatorSpec]:
+    async def _capture_live_locator_variants(
+        self,
+        ctx: StrategyContext,
+        page: Any,
+        locator: LocatorSpec,
+    ) -> dict[str, LocatorSpec]:
         try:
-            pw_locator = locator.to_playwright_locator(page)
-            count = await pw_locator.count()
+            runtime_locator = await ctx.adapter.resolve_locator(page, locator)
+            count = await runtime_locator.count()
             if count <= 0:
                 return {}
-            target = pw_locator.nth(0)
+            target = runtime_locator.nth(0)
             payload = await target.evaluate(
                 """el => {
                     function xpathFor(node) {

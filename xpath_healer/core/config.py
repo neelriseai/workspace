@@ -99,7 +99,7 @@ class RetryConfig:
     enabled: bool = True
     max_attempts: int = 2
     delay_ms: int = 30
-    retry_reason_codes: list[str] = field(default_factory=lambda: ["locator_error", "not_visible"])
+    retry_reason_codes: list[str] = field(default_factory=lambda: ["locator_error", "locator_timeout", "stale_element", "not_visible"])
 
 
 @dataclass(slots=True)
@@ -108,7 +108,13 @@ class LoggingConfig:
 
 
 @dataclass(slots=True)
+class AdapterConfig:
+    name: str = "playwright_python"
+
+
+@dataclass(slots=True)
 class HealerConfig:
+    adapter: AdapterConfig = field(default_factory=AdapterConfig)
     attribute_priority: list[str] = field(default_factory=lambda: list(DEFAULT_ATTRIBUTE_PRIORITY))
     similarity_threshold: float = 0.72
     allow_position_fallback: bool = False
@@ -129,6 +135,10 @@ class HealerConfig:
     @classmethod
     def from_env(cls, prefix: str = "XH_") -> HealerConfig:
         cfg = cls()
+
+        adapter_name = os.getenv(f"{prefix}ADAPTER")
+        if adapter_name:
+            cfg.adapter.name = adapter_name.strip()
 
         attr_priority = os.getenv(f"{prefix}ATTRIBUTE_PRIORITY")
         if attr_priority:

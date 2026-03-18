@@ -1,12 +1,16 @@
-# XPath Healer (Phase A Core)
+# XPath Healer
 
-Deterministic-first locator healing engine for Playwright, with:
+Deterministic-first locator healing engine with configurable automation adapters, with:
 - strategy-based candidate generation
 - type-aware validation gates
 - signature/similarity scoring
 - first-run DOM mining fallback
 - in-memory metadata store for standalone operation
 - thin FastAPI wrapper
+
+Current adapters:
+- `adapters/playwright_python`
+- `adapters/selenium_python`
 
 ## Quick Start
 
@@ -18,13 +22,15 @@ python -m pytest -q
 ## Library Usage
 
 ```python
-from xpath_healer.api.facade import XPathHealerFacade
+from adapters.playwright_python.facade import PlaywrightHealerFacade
+from adapters.selenium_python.facade import SeleniumHealerFacade
 from xpath_healer.core.models import LocatorSpec
 
-facade = XPathHealerFacade()
+playwright_facade = PlaywrightHealerFacade()
+selenium_facade = SeleniumHealerFacade()
 
 # inside async Playwright flow
-recovered = await facade.recover_locator(
+recovered = await playwright_facade.recover_locator(
     page=page,
     app_id="demo-app",
     page_name="login",
@@ -34,6 +40,8 @@ recovered = await facade.recover_locator(
     vars={"label": "Username", "data-testid": "username-input"},
 )
 ```
+
+You can also select the adapter through config/env with `XH_ADAPTER=playwright_python` or `XH_ADAPTER=selenium_python` and create the facade via `xpath_healer.create_healer_facade()`.
 
 ## API
 
@@ -50,6 +58,7 @@ Create an `.env` (or set shell env vars) with placeholders:
 ```bash
 OPENAI_API_KEY=<your-openai-key-placeholder>
 XH_PG_DSN=postgresql://<user>:<password>@<host>:5432/<db>
+XH_ADAPTER=playwright_python
 XH_PG_POOL_MIN=1
 XH_PG_POOL_MAX=10
 XH_PG_AUTO_INIT_SCHEMA=true
@@ -75,11 +84,13 @@ XH_FINGERPRINT_CANDIDATE_LIMIT=25
 XH_RETRY_ENABLED=true
 XH_RETRY_MAX_ATTEMPTS=2
 XH_RETRY_DELAY_MS=30
-XH_RETRY_REASON_CODES=locator_error,not_visible
+XH_RETRY_REASON_CODES=locator_error,locator_timeout,stale_element,not_visible
 ```
 
 Notes:
 - RAG is off by default.
+- Adapter selection defaults to `playwright_python`.
+- Selenium validation/recovery retries include `stale_element` and `locator_timeout` transient errors by default.
 - Stage profile `XH_STAGE_PROFILE=llm_only` disables all deterministic layers and leaves only RAG/LLM stage enabled.
 - If `XH_PG_DSN` is set, facade uses dual metadata mode:
   Postgres primary read/write + JSON fallback/backup under `XH_METADATA_JSON_DIR`.

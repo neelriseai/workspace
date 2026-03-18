@@ -190,7 +190,7 @@ def _heal(
             "locator_value": recovered.locator_spec.value,
         }
     )
-    locator = recovered.locator_spec.to_playwright_locator(page)
+    locator = recovered.playwright_locator
     state["locators"][element_name] = locator
     live_paths = _capture_dom_paths(runtime, locator)
 

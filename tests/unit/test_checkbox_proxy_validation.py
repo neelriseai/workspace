@@ -1,5 +1,6 @@
 import pytest
 
+from adapters.playwright_python.adapter import PlaywrightPythonAdapter
 from tests.unit.fakes import FakeElement, FakePage
 from xpath_healer.core.config import ValidatorConfig
 from xpath_healer.core.models import Intent, LocatorSpec
@@ -14,7 +15,7 @@ async def test_checkbox_proxy_class_is_accepted() -> None:
         FakeElement(tag="span", text="", attrs={"class": "rct-checkbox"}),
         selectors=['[class="rct-checkbox"]'],
     )
-    validator = XPathValidator(ValidatorConfig())
+    validator = XPathValidator(ValidatorConfig(), adapter=PlaywrightPythonAdapter())
     result = await validator.validate_candidate(
         page,
         LocatorSpec(kind="css", value='[class="rct-checkbox"]'),
@@ -30,4 +31,3 @@ async def test_checkbox_icon_strategy_builds_candidates() -> None:
     strategy = CheckboxIconByLabelStrategy()
     assert strategy.supports("checkbox", {"label": "Home"})
     assert not strategy.supports("textbox", {"label": "Home"})
-

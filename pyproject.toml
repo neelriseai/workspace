@@ -5,15 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "xpath-healer"
 version = "0.1.0"
-description = "Deterministic-first locator healing engine for Playwright"
+description = "Deterministic-first locator healing engine with configurable automation adapters"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
 authors = [{ name = "XPath Healer Team" }]
 dependencies = [
-  "playwright>=1.43.0",
   "fastapi>=0.116.0",
   "uvicorn>=0.33.0",
+  "playwright>=1.43.0",
+  "selenium>=4.29.0",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +30,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["xpath_healer*", "service*"]
+include = ["xpath_healer*", "service*", "adapters*"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

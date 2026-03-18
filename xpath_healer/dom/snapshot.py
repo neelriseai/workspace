@@ -6,6 +6,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from xpath_healer.core.automation import AutomationAdapter
+
 
 @dataclass(slots=True)
 class SnapshotRecord:
@@ -14,7 +16,8 @@ class SnapshotRecord:
 
 
 class DomSnapshotter:
-    def __init__(self, cache_ttl_sec: int = 30) -> None:
+    def __init__(self, adapter: AutomationAdapter, cache_ttl_sec: int = 30) -> None:
+        self.adapter = adapter
         self.cache_ttl_sec = cache_ttl_sec
         self._cache: dict[int, SnapshotRecord] = {}
 
@@ -28,9 +31,8 @@ class DomSnapshotter:
         if scoped_locator is not None:
             html = await scoped_locator.evaluate("el => el.outerHTML")
         else:
-            html = await page.evaluate("() => document.documentElement ? document.documentElement.outerHTML : ''")
+            html = await self.adapter.capture_page_html(page)
 
         html = html or ""
         self._cache[cache_key] = SnapshotRecord(html=html, captured_at=now)
         return html
-

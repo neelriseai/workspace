@@ -7,8 +7,9 @@ from typing import Any, Awaitable, Callable
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from xpath_healer.api.facade import XPathHealerFacade
+from xpath_healer.api import create_healer_facade
 from xpath_healer.core.models import HealingHints, LocatorSpec
+from service.session_registry import AutomationSessionRegistry, resolve_session
 
 
 class LocatorSpecModel(BaseModel):
@@ -58,11 +59,14 @@ class GenerateRequest(BaseModel):
 
 
 def create_app(
-    facade: XPathHealerFacade | None = None,
-    page_resolver: Callable[[str], Awaitable[Any]] | None = None,
+    facade: Any | None = None,
+    page_resolver: Callable[[str], Awaitable[Any] | Any] | None = None,
+    session_registry: AutomationSessionRegistry | None = None,
 ) -> FastAPI:
     app = FastAPI(title="XPath Healer Service", version="0.1.0")
-    healer = facade or XPathHealerFacade()
+    healer = facade or create_healer_facade()
+    registry = session_registry or AutomationSessionRegistry()
+    app.state.session_registry = registry
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -82,15 +86,10 @@ def create_app(
 
     @app.post("/heal")
     async def heal(req: HealRequest) -> dict[str, Any]:
-        if page_resolver is None:
-            raise HTTPException(
-                status_code=503,
-                detail="No Playwright page resolver is configured. Service is library-first by default.",
-            )
         if not req.session_id:
             raise HTTPException(status_code=400, detail="session_id is required for /heal.")
 
-        page = await page_resolver(req.session_id)
+        page = await resolve_session(req.session_id, resolver=page_resolver, registry=registry)
         if page is None:
             raise HTTPException(status_code=404, detail=f"No page found for session_id={req.session_id}")
 
@@ -122,4 +121,3 @@ def create_app(
 
 
 app = create_app()
-

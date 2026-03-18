@@ -153,6 +153,38 @@
           },
           {
             "timestamp": "2026-03-10T23:44:30.761119+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.956,
+            "stability_score": 0.94,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-18T00:38:08.985757+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.956,
+            "stability_score": 0.94,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-18T00:38:43.285939+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.956,
+            "stability_score": 0.94,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-18T00:54:56.377999+00:00",
+            "strategy_id": "rag_suggest",
+            "overall_score": 0.956,
+            "stability_score": 0.94,
+            "similarity_score": 0.9,
+            "uniqueness_score": 1.0
+          },
+          {
+            "timestamp": "2026-03-18T00:55:30.763744+00:00",
             "overall_score": 0.956,
             "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
@@ -161,9 +193,9 @@
           }
         ]
       },
-      "last_seen": "2026-03-10T23:44:30.759770+00:00",
-      "success_count": 9,
-      "fail_count": 2
+      "last_seen": "2026-03-18T00:55:30.762649+00:00",
+      "success_count": 13,
+      "fail_count": 4
     },
     "username": {
       "id": "8677a9dc-9a88-4b05-8f9c-c8d9e9666432",
