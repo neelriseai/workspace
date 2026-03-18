@@ -20,8 +20,10 @@ def _env_bool(name: str, default: bool) -> bool:
 @dataclass(frozen=True)
 class IntegrationSettings:
     base_url: str
-    browser_engine: str
-    browser_channel: str | None
+    playwright_browser: str
+    playwright_channel: str | None
+    selenium_browser: str
+    selenium_binary_path: str | None
     headless: bool
     artifacts_root: Path
     reports_dir: Path
@@ -53,8 +55,14 @@ def load_settings(config_path: Path | None = None) -> IntegrationSettings:
     artifacts_raw = raw.get("artifacts") or {}
     capture_raw = raw.get("capture") or {}
 
-    browser_engine = os.getenv("XH_BROWSER_ENGINE", str(browser_raw.get("engine") or "chromium")).strip().lower()
-    browser_channel = os.getenv("XH_BROWSER_CHANNEL", browser_raw.get("channel"))
+    legacy_browser = os.getenv("XH_BROWSER_ENGINE", str(browser_raw.get("engine") or "chromium")).strip().lower()
+    playwright_browser_default = str(browser_raw.get("playwright_browser") or legacy_browser or "chromium").strip().lower()
+    playwright_browser = os.getenv("XH_PLAYWRIGHT_BROWSER", playwright_browser_default).strip().lower()
+    playwright_channel_default = browser_raw.get("playwright_channel", browser_raw.get("channel"))
+    playwright_channel = os.getenv("XH_PLAYWRIGHT_CHANNEL", os.getenv("XH_BROWSER_CHANNEL", playwright_channel_default))
+    selenium_browser_default = str(browser_raw.get("selenium_browser") or "chrome").strip().lower()
+    selenium_browser = os.getenv("XH_SELENIUM_BROWSER", selenium_browser_default).strip().lower()
+    selenium_binary_path = os.getenv("XH_SELENIUM_BINARY", browser_raw.get("selenium_binary"))
     headless = _env_bool("XH_HEADLESS", bool(browser_raw.get("headless", True)))
 
     root_dir = Path(os.getenv("XH_ARTIFACTS_ROOT", str(artifacts_raw.get("root_dir") or "artifacts")))
@@ -102,8 +110,10 @@ def load_settings(config_path: Path | None = None) -> IntegrationSettings:
 
     return IntegrationSettings(
         base_url=base_url,
-        browser_engine=browser_engine,
-        browser_channel=str(browser_channel).strip() if browser_channel else None,
+        playwright_browser=playwright_browser,
+        playwright_channel=str(playwright_channel).strip() if playwright_channel else None,
+        selenium_browser=selenium_browser,
+        selenium_binary_path=str(selenium_binary_path).strip() if selenium_binary_path else None,
         headless=headless,
         artifacts_root=root_dir,
         reports_dir=reports_dir,

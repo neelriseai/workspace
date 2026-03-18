@@ -94,11 +94,40 @@ class XPathValidator:
               for (const attr of Array.from(el.attributes || [])) {
                 attrs[attr.name] = attr.value;
               }
+              const control = (() => {
+                if (el && typeof el.control !== "undefined" && el.control) return el.control;
+                if (el && typeof el.querySelector === "function") {
+                  return el.querySelector("input, textarea, select, button");
+                }
+                return null;
+              })();
+              const proxyLabel = (() => {
+                if (el && typeof el.closest === "function") {
+                  return el.closest("label");
+                }
+                return null;
+              })();
+              const proxyControl = (() => {
+                if (!proxyLabel) return null;
+                if (typeof proxyLabel.control !== "undefined" && proxyLabel.control) return proxyLabel.control;
+                if (typeof proxyLabel.querySelector === "function") {
+                  return proxyLabel.querySelector("input, textarea, select, button");
+                }
+                return null;
+              })();
               return {
                 tag: (el.tagName || "").toLowerCase(),
                 type: (el.getAttribute("type") || "").toLowerCase(),
                 role: (el.getAttribute("role") || "").toLowerCase(),
                 text: (el.innerText || el.textContent || "").trim(),
+                controlTag: control ? (control.tagName || "").toLowerCase() : "",
+                controlType: control ? ((control.getAttribute("type") || "").toLowerCase()) : "",
+                controlRole: control ? ((control.getAttribute("role") || "").toLowerCase()) : "",
+                proxyLabelTag: proxyLabel ? (proxyLabel.tagName || "").toLowerCase() : "",
+                proxyLabelText: proxyLabel ? ((proxyLabel.innerText || proxyLabel.textContent || "").trim()) : "",
+                proxyControlTag: proxyControl ? (proxyControl.tagName || "").toLowerCase() : "",
+                proxyControlType: proxyControl ? ((proxyControl.getAttribute("type") || "").toLowerCase()) : "",
+                proxyControlRole: proxyControl ? ((proxyControl.getAttribute("role") || "").toLowerCase()) : "",
                 attrs,
               };
             }""",
@@ -109,6 +138,14 @@ class XPathValidator:
         payload.setdefault("type", "")
         payload.setdefault("role", "")
         payload.setdefault("text", "")
+        payload.setdefault("controlTag", "")
+        payload.setdefault("controlType", "")
+        payload.setdefault("controlRole", "")
+        payload.setdefault("proxyLabelTag", "")
+        payload.setdefault("proxyLabelText", "")
+        payload.setdefault("proxyControlTag", "")
+        payload.setdefault("proxyControlType", "")
+        payload.setdefault("proxyControlRole", "")
         payload.setdefault("attrs", {})
         return payload
 
@@ -117,6 +154,13 @@ class XPathValidator:
         role = normalize_text(info.get("role"))
         input_type = normalize_text(info.get("type"))
         text = str(info.get("text") or "")
+        control_tag = normalize_text(info.get("controlTag"))
+        control_type = normalize_text(info.get("controlType"))
+        control_role = normalize_text(info.get("controlRole"))
+        proxy_label_tag = normalize_text(info.get("proxyLabelTag"))
+        proxy_control_tag = normalize_text(info.get("proxyControlTag"))
+        proxy_control_type = normalize_text(info.get("proxyControlType"))
+        proxy_control_role = normalize_text(info.get("proxyControlRole"))
         attrs = info.get("attrs") or {}
         class_name = normalize_text(attrs.get("class"))
 
@@ -152,6 +196,20 @@ class XPathValidator:
                 return ValidationResult.success(matched_count=1, chosen_index=0)
             if role == field_type:
                 return ValidationResult.success(matched_count=1, chosen_index=0)
+            if tag == "label":
+                if control_type == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
+                if control_role == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
+                if control_tag == "input" and control_type == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
+            if proxy_label_tag == "label":
+                if proxy_control_type == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
+                if proxy_control_role == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
+                if proxy_control_tag == "input" and proxy_control_type == field_type:
+                    return ValidationResult.success(matched_count=1, chosen_index=0, reason_codes=["validated_label_proxy_toggle"])
             # Permit proxy wrapper/icon controls (common in custom component libraries).
             if field_type == "checkbox":
                 if "checkbox" in class_name or role in {"switch"}:

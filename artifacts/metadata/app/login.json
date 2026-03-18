@@ -3,7 +3,7 @@
   "page_name": "login",
   "elements": {
     "email_input": {
-      "id": "5b3ce8a4-762b-4ff4-b56a-c6f4c171bc1b",
+      "id": "945bc327-decf-4d24-bf05-f3bf73060b80",
       "app_id": "app",
       "page_name": "login",
       "element_name": "email_input",
@@ -88,7 +88,7 @@
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-10T23:10:20.339830+00:00",
+            "timestamp": "2026-03-18T06:43:06.429812+00:00",
             "strategy_id": "rag_suggest",
             "overall_score": 0.976,
             "stability_score": 0.94,
@@ -96,95 +96,7 @@
             "uniqueness_score": 1.0
           },
           {
-            "timestamp": "2026-03-10T23:13:17.131070+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:14:10.759250+00:00",
-            "strategy_id": "page_index.rank:8385b13c-30cf-47c6-b299-28c9c1e7caa6",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:14:27.749795+00:00",
-            "strategy_id": "page_index.rank:8385b13c-30cf-47c6-b299-28c9c1e7caa6",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:14:44.726780+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:16:05.891850+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:16:40.571197+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:43:56.299995+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:44:30.761119+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-18T00:38:08.985757+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-18T00:38:43.285939+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-18T00:54:56.377999+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.956,
-            "stability_score": 0.94,
-            "similarity_score": 0.9,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-18T00:55:30.763744+00:00",
+            "timestamp": "2026-03-18T06:43:41.137250+00:00",
             "overall_score": 0.956,
             "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
@@ -193,146 +105,10 @@
           }
         ]
       },
-      "last_seen": "2026-03-18T00:55:30.762649+00:00",
-      "success_count": 13,
-      "fail_count": 4
-    },
-    "username": {
-      "id": "8677a9dc-9a88-4b05-8f9c-c8d9e9666432",
-      "app_id": "app",
-      "page_name": "login",
-      "element_name": "username",
-      "field_type": "textbox",
-      "last_good_locator": {
-        "kind": "css",
-        "value": "[data-testid=\"username-input\"]",
-        "options": {},
-        "scope": null
-      },
-      "robust_locator": {
-        "kind": "css",
-        "value": "[data-testid=\"username-input\"]",
-        "options": {},
-        "scope": null
-      },
-      "strategy_id": "page_index.rank:a0deda19-22ec-405d-b0f1-1e3e93dc2b6c",
-      "signature": {
-        "tag": "input",
-        "stable_attrs": {
-          "data-testid": "username-input",
-          "name": "username",
-          "type": "text"
-        },
-        "short_text": "",
-        "container_path": [],
-        "component_kind": null
-      },
-      "hints": {
-        "attr_priority_order": [
-          "data-testid",
-          "aria-label",
-          "name",
-          "formcontrolname",
-          "placeholder",
-          "role",
-          "href",
-          "col-id",
-          "aria-colindex",
-          "class"
-        ],
-        "threshold": null,
-        "visibility_pref": true,
-        "aliases": {},
-        "defaults": {},
-        "allow_position_fallback": false,
-        "strict_single_match": true
-      },
-      "locator_variants": {
-        "last_good": {
-          "kind": "css",
-          "value": "[data-testid=\"username-input\"]",
-          "options": {},
-          "scope": null
-        },
-        "robust_css": {
-          "kind": "css",
-          "value": "[data-testid=\"username-input\"]",
-          "options": {},
-          "scope": null
-        },
-        "robust_xpath": {
-          "kind": "xpath",
-          "value": "//*[@data-testid='username-input']",
-          "options": {},
-          "scope": null
-        }
-      },
-      "quality_metrics": {
-        "uniqueness_score": 1.0,
-        "stability_score": 0.97,
-        "similarity_score": 1.0,
-        "overall_score": 0.988,
-        "matched_count": 1,
-        "chosen_index": 0,
-        "validation_reasons": [
-          "validated"
-        ],
-        "strategy_id": "page_index.rank:a0deda19-22ec-405d-b0f1-1e3e93dc2b6c",
-        "strategy_score": 0.6877,
-        "locator_kind": "css",
-        "locator_value": "[data-testid=\"username-input\"]",
-        "valid_against_hints": true,
-        "history": [
-          {
-            "timestamp": "2026-03-10T23:13:52.234454+00:00",
-            "overall_score": 0.988,
-            "strategy_id": "page_index.rank:a0deda19-22ec-405d-b0f1-1e3e93dc2b6c",
-            "uniqueness_score": 1.0,
-            "stability_score": 0.97,
-            "similarity_score": 1.0
-          }
-        ]
-      },
-      "last_seen": "2026-03-10T23:13:52.234318+00:00",
-      "success_count": 1,
-      "fail_count": 0
+      "last_seen": "2026-03-18T06:43:41.135819+00:00",
+      "success_count": 2,
+      "fail_count": 1
     }
   },
-  "page_index": {
-    "id": "72c5aab8-6892-41fd-bd04-b6e4e69649cf",
-    "app_id": "app",
-    "page_name": "login",
-    "dom_hash": "8d7d46c312c38de99d05309133a3aeb2a42eac6a680701eece6574327de10ffb",
-    "snapshot_version": "v1",
-    "created_at": "2026-03-10T23:14:10.734237+00:00",
-    "elements": [
-      {
-        "element_id": "8385b13c-30cf-47c6-b299-28c9c1e7caa6",
-        "element_name": "email_2",
-        "tag": "input",
-        "text": "",
-        "normalized_text": "",
-        "attr_id": "",
-        "attr_name": "email",
-        "class_tokens": [],
-        "role": "textbox",
-        "aria_label": "",
-        "placeholder": "",
-        "container_path": "body>html",
-        "parent_signature": "body>html",
-        "neighbor_text": "",
-        "position_signature": "input:1",
-        "xpath": "//input[@name='email']",
-        "css": "input[name=\"email\"]",
-        "fingerprint_hash": "929c316abac849b40d91f8602f0c19912b96aca1750656ae621166c78ea1f649",
-        "metadata_json": {
-          "attrs": {
-            "name": "email",
-            "type": "text"
-          },
-          "ordinal": 2
-        }
-      }
-    ]
-  }
+  "page_index": null
 }

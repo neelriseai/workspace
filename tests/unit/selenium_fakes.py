@@ -18,6 +18,7 @@ class FakeSeleniumElement:
     enabled: bool = True
     bbox: dict[str, float] | None = None
     driver: "FakeSeleniumDriver | None" = None
+    parent: "FakeSeleniumDriver | None" = None
 
     def find_elements(self, by: str, value: str) -> list["FakeSeleniumElement"]:
         if self.driver is None:
@@ -51,6 +52,7 @@ class FakeSeleniumDriver:
         selectors: dict[str, list[str]] | None = None,
     ) -> None:
         element.driver = self
+        element.parent = self
         self.elements.append(element)
         for by, values in (selectors or {}).items():
             for value in values:
@@ -79,6 +81,8 @@ class FakeSeleniumDriver:
             return element.bbox or {"x": 0.0, "y": 0.0, "width": 100.0, "height": 20.0}
         if "outerHTML" in script:
             return element._html()
+        if "el.labels" in script and "labelText" in script:
+            return element.attrs.get("data-label") or element.text
         if "compareDocumentPosition" in script:
             return {"following": True, "preceding": False}
         if "xpathFor(node)" in script and "cssFor(node)" in script:

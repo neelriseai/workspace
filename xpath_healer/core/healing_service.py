@@ -1010,9 +1010,21 @@ class HealingService:
             attr_priority = inp.hints.attr_priority_order if inp.hints and inp.hints.attr_priority_order else ctx.config.attribute_priority
             robust_css = ctx.signature_extractor.build_robust_locator(signature, attr_priority)
             robust_xpath = ctx.signature_extractor.build_robust_xpath(signature, attr_priority)
+            if self._is_weak_css(robust_css):
+                preferred_css = self._preferred_css_variant(locator, None)
+                if preferred_css:
+                    robust_css = preferred_css
+            if self._is_weak_xpath(robust_xpath):
+                preferred_xpath = self._preferred_xpath_variant(locator, None)
+                if preferred_xpath:
+                    robust_xpath = preferred_xpath
             meta.locator_variants["robust_css"] = robust_css
             meta.locator_variants["robust_xpath"] = robust_xpath
-            meta.robust_locator = robust_css
+            meta.robust_locator = self._choose_primary_robust_locator(
+                locator=locator,
+                robust_css=robust_css,
+                robust_xpath=robust_xpath,
+            )
 
         if inp.hints:
             meta.hints = inp.hints
@@ -1020,8 +1032,24 @@ class HealingService:
         live_variants = await self._capture_live_locator_variants(ctx, inp.page, locator)
         meta.locator_variants.update(live_variants)
         live_css = meta.locator_variants.get("live_css")
-        if live_css and self._is_weak_css(meta.robust_locator):
-            meta.robust_locator = live_css
+        live_xpath = meta.locator_variants.get("live_xpath")
+        robust_css_variant = meta.locator_variants.get("robust_css")
+        if self._is_weak_css(robust_css_variant):
+            preferred_css = self._preferred_css_variant(locator, live_css)
+            if preferred_css:
+                meta.locator_variants["robust_css"] = preferred_css
+        robust_xpath_variant = meta.locator_variants.get("robust_xpath")
+        if self._is_weak_xpath(robust_xpath_variant):
+            preferred_xpath = self._preferred_xpath_variant(locator, live_xpath)
+            if preferred_xpath:
+                meta.locator_variants["robust_xpath"] = preferred_xpath
+        meta.robust_locator = self._choose_primary_robust_locator(
+            locator=locator,
+            robust_css=meta.locator_variants.get("robust_css"),
+            robust_xpath=meta.locator_variants.get("robust_xpath"),
+            live_css=live_css,
+            live_xpath=live_xpath,
+        )
 
         similarity_score = self._similarity_to_previous(ctx, previous_signature, meta.signature)
         quality_metrics = self._build_quality_metrics(
@@ -1167,6 +1195,56 @@ class HealingService:
             return True
         value = (locator.value or "").strip().lower()
         return value in {"*", "html", "body", "div", "span", "p", "a"}
+
+    @staticmethod
+    def _is_weak_xpath(locator: LocatorSpec | None) -> bool:
+        if locator is None or locator.kind != "xpath":
+            return True
+        value = (locator.value or "").strip().lower()
+        if value in {"//*", "//html", "/html[1]", "//body", "/html[1]/body[1]"}:
+            return True
+        if value.startswith("/html"):
+            return True
+        if value.startswith("//") and "[" not in value and "/" not in value[2:]:
+            return True
+        return False
+
+    @classmethod
+    def _choose_primary_robust_locator(
+        cls,
+        locator: LocatorSpec,
+        robust_css: LocatorSpec | None,
+        robust_xpath: LocatorSpec | None,
+        live_css: LocatorSpec | None = None,
+        live_xpath: LocatorSpec | None = None,
+    ) -> LocatorSpec:
+        preferred = [
+            robust_css if not cls._is_weak_css(robust_css) else None,
+            robust_xpath if not cls._is_weak_xpath(robust_xpath) else None,
+            live_css if not cls._is_weak_css(live_css) else None,
+            live_xpath if not cls._is_weak_xpath(live_xpath) else None,
+            locator,
+        ]
+        for candidate in preferred:
+            if candidate is not None:
+                return candidate
+        return locator
+
+    @staticmethod
+    def _preferred_css_variant(locator: LocatorSpec, live_css: LocatorSpec | None) -> LocatorSpec | None:
+        if live_css and not HealingService._is_weak_css(live_css):
+            return live_css
+        if locator.kind == "css" and not HealingService._is_weak_css(locator):
+            return locator
+        return None
+
+    @staticmethod
+    def _preferred_xpath_variant(locator: LocatorSpec, live_xpath: LocatorSpec | None) -> LocatorSpec | None:
+        if locator.kind == "xpath" and not HealingService._is_weak_xpath(locator):
+            return locator
+        if live_xpath and not HealingService._is_weak_xpath(live_xpath):
+            return live_xpath
+        return None
 
     @staticmethod
     def _is_weak_metadata_locator(locator: LocatorSpec, field_type_norm: str) -> bool:

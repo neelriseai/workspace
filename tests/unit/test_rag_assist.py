@@ -47,7 +47,7 @@ class StubLLM:
             {"kind": "xpath", "value": "//*", "options": {}},
             {"kind": "css", "value": '[name="email"]', "options": {}, "confidence": 0.91, "reason": "stable name attr"},
             {"kind": "css", "value": '[name="email"]', "options": {}, "confidence": 0.62},
-            {"kind": "role", "value": "textbox", "options": {"name": "Email"}, "confidence": 0.72},
+            {"kind": "role", "value": "textbox[name='Email']", "options": {}, "confidence": 0.72, "reason": "label Email"},
         ]
 
 
@@ -78,6 +78,8 @@ async def test_rag_assist_uses_context_rerank_and_filters_weak_candidates() -> N
     assert "F xpath=//broken" in dsl
     assert "G ANCHOR email" in dsl
     assert "dom_signature" in llm.last_payload
+    assert "dom_context" in llm.last_payload
+    assert llm.last_payload["dom_context"]
     assert "intent" not in llm.last_payload
     assert "vars" not in llm.last_payload
     assert len(out) == 2
@@ -86,3 +88,52 @@ async def test_rag_assist_uses_context_rerank_and_filters_weak_candidates() -> N
     assert out[0].options.get("_llm_confidence") == pytest.approx(0.91)
     assert out[0].options.get("_llm_reason") == "stable name attr"
     assert out[1].kind == "role"
+    assert out[1].value == "textbox"
+    assert out[1].options.get("name") == "Email"
+
+
+@pytest.mark.asyncio
+async def test_rag_assist_includes_dom_context_without_retrieval_hits() -> None:
+    class EmptyRetriever(StubRetriever):
+        async def retrieve(self, query_embedding: list[float], top_k: int = 5) -> list[dict]:
+            _ = query_embedding
+            _ = top_k
+            return []
+
+    class DomAwareLLM(StubLLM):
+        async def suggest_locators(self, prompt_payload: dict) -> list[dict]:
+            self.last_payload = prompt_payload
+            return [
+                {
+                    "kind": "role",
+                    "value": "textbox[name='Full Name']",
+                    "options": {},
+                    "confidence": 0.88,
+                    "reason": "label and placeholder identify the textbox",
+                }
+            ]
+
+    assist = RagAssist(embedder=StubEmbedder(), retriever=EmptyRetriever(), llm=DomAwareLLM())
+    inp = BuildInput(
+        page=None,
+        app_id="demo-app",
+        page_name="text_box",
+        element_name="full_name",
+        field_type="textbox",
+        fallback=LocatorSpec(kind="xpath", value="//broken"),
+        vars={"label": "Full Name"},
+        intent=Intent.from_vars({"label": "Full Name", "text": "Full Name"}),
+    )
+
+    out = await assist.suggest(
+        inp,
+        '<html><body><label for="userName">Full Name</label><input id="userName" placeholder="Full Name" type="text" /></body></html>',
+        top_k=3,
+    )
+
+    assert assist.last_telemetry is not None
+    assert assist.last_telemetry["raw_context_count"] == 0
+    assert assist.last_telemetry["dom_context_count"] >= 1
+    assert out[0].kind == "role"
+    assert out[0].value == "textbox"
+    assert out[0].options.get("name") == "Full Name"

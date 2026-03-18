@@ -3,20 +3,22 @@
   "page_name": "checkbox",
   "elements": {
     "home_checkbox_icon": {
-      "id": "c69c46f2-0ae4-424c-ac7c-dfc936188db0",
+      "id": "e1a7d3d1-99a4-47e5-b4f9-af586101ba37",
       "app_id": "demo-qa-app",
       "page_name": "checkbox",
       "element_name": "home_checkbox_icon",
       "field_type": "checkbox",
       "last_good_locator": {
-        "kind": "xpath",
-        "value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
-        "options": {},
+        "kind": "text",
+        "value": "Home",
+        "options": {
+          "exact": true
+        },
         "scope": null
       },
       "robust_locator": {
         "kind": "css",
-        "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-checkbox:nth-of-type(1)",
+        "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-title:nth-of-type(3)",
         "options": {},
         "scope": null
       },
@@ -24,7 +26,7 @@
       "signature": {
         "tag": "span",
         "stable_attrs": {},
-        "short_text": "",
+        "short_text": "home",
         "container_path": [],
         "component_kind": null
       },
@@ -49,187 +51,69 @@
         "strict_single_match": true
       },
       "locator_variants": {
-        "live_css": {
-          "kind": "css",
-          "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-checkbox:nth-of-type(1)",
-          "options": {},
-          "scope": null
-        },
         "last_good": {
-          "kind": "xpath",
-          "value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
-          "options": {},
-          "scope": null
-        },
-        "live_xpath": {
-          "kind": "xpath",
-          "value": "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/ol[1]/li[1]/span[1]/label[1]/span[1]",
-          "options": {},
+          "kind": "text",
+          "value": "Home",
+          "options": {
+            "exact": true
+          },
           "scope": null
         },
         "robust_css": {
           "kind": "css",
-          "value": "span",
+          "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-title:nth-of-type(3)",
           "options": {},
           "scope": null
         },
         "robust_xpath": {
           "kind": "xpath",
-          "value": "//span",
+          "value": "//span[contains(normalize-space(), 'home')]",
+          "options": {},
+          "scope": null
+        },
+        "live_xpath": {
+          "kind": "xpath",
+          "value": "/html[1]/body[1]/div[2]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/ol[1]/li[1]/span[1]/label[1]/span[3]",
+          "options": {},
+          "scope": null
+        },
+        "live_css": {
+          "kind": "css",
+          "value": "div.col-12.mt-4:nth-of-type(2) > div.check-box-tree-wrapper:nth-of-type(2) > div.react-checkbox-tree.rct-icons-fa4:nth-of-type(1) > ol:nth-of-type(1) > li.rct-node.rct-node-parent:nth-of-type(1) > span.rct-text:nth-of-type(1) > label:nth-of-type(1) > span.rct-title:nth-of-type(3)",
           "options": {},
           "scope": null
         }
       },
       "quality_metrics": {
         "uniqueness_score": 1.0,
-        "stability_score": 0.64,
-        "similarity_score": 0.35,
-        "overall_score": 0.726,
+        "stability_score": 0.72,
+        "similarity_score": 1.0,
+        "overall_score": 0.888,
         "matched_count": 1,
         "chosen_index": 0,
         "validation_reasons": [
-          "validated_proxy_checkbox",
+          "validated_label_proxy_toggle",
           "validated"
         ],
         "strategy_id": "rag_suggest",
-        "strategy_score": 0.36,
-        "locator_kind": "xpath",
-        "locator_value": "//*[self::span or self::label][normalize-space()='Home' or contains(translate(normalize-space(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'home')]/preceding::*[contains(@class,'checkbox')][1]",
+        "strategy_score": 0.85,
+        "locator_kind": "text",
+        "locator_value": "Home",
         "valid_against_hints": true,
         "history": [
           {
-            "timestamp": "2026-03-07T21:43:38.490016+00:00",
-            "strategy_id": "checkbox_icon_by_label",
-            "overall_score": 0.856,
-            "stability_score": 0.64,
-            "similarity_score": 1.0,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-07T23:06:36.591996+00:00",
-            "strategy_id": "metadata.last_good",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T00:39:37.309193+00:00",
-            "strategy_id": "metadata.last_good",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T00:41:49.384467+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T00:52:17.754466+00:00",
-            "strategy_id": "metadata.last_good",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T00:58:24.170136+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T01:00:06.064961+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-08T01:00:34.914459+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:23:16.020887+00:00",
-            "strategy_id": "metadata.last_good",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:29:17.343332+00:00",
-            "strategy_id": "metadata.last_good",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:33:13.862136+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-10T23:46:38.447805+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-11T00:25:47.042809+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-11T00:49:36.915090+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-11T00:50:51.059108+00:00",
-            "strategy_id": "rag_suggest",
-            "overall_score": 0.726,
-            "stability_score": 0.64,
-            "similarity_score": 0.35,
-            "uniqueness_score": 1.0
-          },
-          {
-            "timestamp": "2026-03-11T01:19:34.352878+00:00",
-            "overall_score": 0.726,
+            "timestamp": "2026-03-18T06:41:25.052334+00:00",
+            "overall_score": 0.888,
             "strategy_id": "rag_suggest",
             "uniqueness_score": 1.0,
-            "stability_score": 0.64,
-            "similarity_score": 0.35
+            "stability_score": 0.72,
+            "similarity_score": 1.0
           }
         ]
       },
-      "last_seen": "2026-03-11T01:19:34.179349+00:00",
-      "success_count": 16,
-      "fail_count": 3
+      "last_seen": "2026-03-18T06:41:24.956706+00:00",
+      "success_count": 1,
+      "fail_count": 0
     }
   },
   "page_index": null

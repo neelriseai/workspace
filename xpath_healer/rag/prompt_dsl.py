@@ -12,6 +12,7 @@ def build_prompt_dsl(
     inp: BuildInput,
     dom_signature: str,
     context_candidates: list[dict[str, Any]],
+    dom_context: list[dict[str, Any]],
     deep_graph: bool = False,
 ) -> str:
     lines: list[str] = []
@@ -35,13 +36,19 @@ def build_prompt_dsl(
         else:
             lines.append(f"{idx} {locator} S={float(score):.4f}")
 
+    lines.append("H")
+    for idx, item in enumerate(dom_context[:8], start=1):
+        lines.append(f"{idx} {_dom_entity_line(item)}")
+
     lines.append(f"D {_compact_dom(dom_signature, limit=540 if deep_graph else 220)}")
     if deep_graph:
         lines.append("GD on")
     lines.extend(
         [
             "R prefer stable attrs; prefer css/role when unique; avoid absolute/deep-index xpath; max 5",
-            "R stay grounded in C and D; if evidence weak set needs_more_context=true",
+            "R stay grounded in C, H and D; if evidence weak set needs_more_context=true",
+            "R role candidates must use value as role only; put accessible name and exact in options",
+            "R for checkbox/radio/switch controls, prefer visible label or wrapper text over hidden native input when both appear",
             "O JSON only: [{\"kind\":\"css|xpath|role|text|pw\",\"value\":\"...\",\"options\":{},\"confidence\":0.0,\"reason\":\"...\",\"needs_more_context\":false}]",
         ]
     )
@@ -144,6 +151,29 @@ def _candidate_locator_line(candidate: dict[str, Any]) -> str:
     return f"meta={page}.{element}".strip(".")
 
 
+def _dom_entity_line(entity: dict[str, Any]) -> str:
+    attrs = entity.get("attrs") if isinstance(entity.get("attrs"), dict) else {}
+    parts = [f"tag={normalize_text(str(entity.get('tag') or ''))}"]
+    role = normalize_text(str(entity.get("role") or ""))
+    if role:
+        parts.append(f"role={role}")
+    control_type = normalize_text(str(entity.get("control_type") or ""))
+    if control_type:
+        parts.append(f"control={control_type}")
+    label = _prompt_text(entity.get("label"))
+    if label:
+        parts.append(f'label="{label}"')
+    text = _prompt_text(entity.get("text"))
+    if text and text != label:
+        parts.append(f'text="{text}"')
+    for key in ("id", "name", "placeholder", "type", "data-testid", "aria-label", "href"):
+        value = _prompt_text(attrs.get(key))
+        if value:
+            token = key.replace("-", "_")
+            parts.append(f'{token}="{value}"')
+    return safe_join(parts, sep=" ")
+
+
 def _graph_hint_lines(inp: BuildInput) -> list[str]:
     lines: list[str] = []
     node_hint = _node_hint(inp)
@@ -191,3 +221,10 @@ def _first_hint(inp: BuildInput, keys: tuple[str, ...]) -> str:
         if value:
             return normalize_text(value)
     return ""
+
+
+def _prompt_text(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    return " ".join(raw.split())
