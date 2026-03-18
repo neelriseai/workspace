@@ -43,6 +43,12 @@ recovered = await playwright_facade.recover_locator(
 
 You can also select the adapter through config/env with `XH_ADAPTER=playwright_python` or `XH_ADAPTER=selenium_python` and create the facade via `xpath_healer.create_healer_facade()`.
 
+Integration browser selection is explicit per framework:
+- Playwright: `XH_PLAYWRIGHT_BROWSER=chromium|chrome|edge|firefox|webkit`
+- Playwright channel override: `XH_PLAYWRIGHT_CHANNEL=chrome|msedge|...`
+- Selenium: `XH_SELENIUM_BROWSER=chrome|chromium|edge|firefox`
+- Selenium Chromium binary override: `XH_SELENIUM_BINARY=/path/to/chromium`
+
 ## API
 
 Run FastAPI wrapper:
@@ -59,6 +65,10 @@ Create an `.env` (or set shell env vars) with placeholders:
 OPENAI_API_KEY=<your-openai-key-placeholder>
 XH_PG_DSN=postgresql://<user>:<password>@<host>:5432/<db>
 XH_ADAPTER=playwright_python
+XH_PLAYWRIGHT_BROWSER=chromium
+XH_PLAYWRIGHT_CHANNEL=
+XH_SELENIUM_BROWSER=chrome
+XH_SELENIUM_BINARY=
 XH_PG_POOL_MIN=1
 XH_PG_POOL_MAX=10
 XH_PG_AUTO_INIT_SCHEMA=true

@@ -41,6 +41,14 @@ class FakeElement:
                 "type": normalize_text(self.attrs.get("type", "")),
                 "role": normalize_text(self.attrs.get("role", "")),
                 "text": self.text,
+                "controlTag": normalize_text(self.attrs.get("data-control-tag", "")),
+                "controlType": normalize_text(self.attrs.get("data-control-type", "")),
+                "controlRole": normalize_text(self.attrs.get("data-control-role", "")),
+                "proxyLabelTag": normalize_text(self.attrs.get("data-proxy-label-tag", "")),
+                "proxyLabelText": self.attrs.get("data-proxy-label-text", ""),
+                "proxyControlTag": normalize_text(self.attrs.get("data-proxy-control-tag", "")),
+                "proxyControlType": normalize_text(self.attrs.get("data-proxy-control-type", "")),
+                "proxyControlRole": normalize_text(self.attrs.get("data-proxy-control-role", "")),
                 "attrs": dict(self.attrs),
                 "container": [],
             }
@@ -224,4 +232,3 @@ class FakePage:
             return out
 
         return [el for el in self.elements if el.tag.lower() == part.lower()]
-

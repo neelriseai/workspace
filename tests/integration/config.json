@@ -2,6 +2,10 @@
   "base_url": "https://demo-qa-app.azurewebsites.net",
   "browser": {
     "engine": "chromium",
+    "playwright_browser": "chromium",
+    "playwright_channel": null,
+    "selenium_browser": "chrome",
+    "selenium_binary": null,
     "channel": null,
     "headless": true
   },

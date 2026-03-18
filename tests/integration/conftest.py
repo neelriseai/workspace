@@ -76,6 +76,32 @@ def _env_bool(name: str, default: bool) -> bool:
     return value.strip().casefold() in {"1", "true", "yes", "y", "on"}
 
 
+def _resolve_playwright_launch(playwright: Any, settings: IntegrationSettings) -> tuple[Any, dict[str, Any], str]:
+    browser = (settings.playwright_browser or "chromium").strip().lower()
+    launch_kwargs: dict[str, Any] = {"headless": settings.headless}
+
+    if browser in {"chromium", "firefox", "webkit"}:
+        browser_type = getattr(playwright, browser, playwright.chromium)
+        if settings.playwright_channel:
+            launch_kwargs["channel"] = settings.playwright_channel
+        return browser_type, launch_kwargs, browser
+
+    if browser in {"chrome", "google-chrome"}:
+        browser_type = playwright.chromium
+        launch_kwargs["channel"] = settings.playwright_channel or "chrome"
+        return browser_type, launch_kwargs, "chrome"
+
+    if browser in {"edge", "msedge"}:
+        browser_type = playwright.chromium
+        launch_kwargs["channel"] = settings.playwright_channel or "msedge"
+        return browser_type, launch_kwargs, "msedge"
+
+    browser_type = playwright.chromium
+    if settings.playwright_channel:
+        launch_kwargs["channel"] = settings.playwright_channel
+    return browser_type, launch_kwargs, browser
+
+
 class LoggedMetadataRepository(MetadataRepository):
     def __init__(
         self,
@@ -430,11 +456,7 @@ def page(
     integration_logger: logging.Logger,
 ) -> Any:
     playwright = runtime.run(async_playwright().start())
-    browser_type = getattr(playwright, integration_settings.browser_engine, playwright.chromium)
-
-    launch_kwargs: dict[str, Any] = {"headless": integration_settings.headless}
-    if integration_settings.browser_channel:
-        launch_kwargs["channel"] = integration_settings.browser_channel
+    browser_type, launch_kwargs, browser_name = _resolve_playwright_launch(playwright, integration_settings)
 
     try:
         browser = runtime.run(browser_type.launch(**launch_kwargs))
@@ -453,9 +475,9 @@ def page(
     p = runtime.run(context.new_page())
     p.set_default_timeout(20_000)
     integration_logger.info(
-        "browser_started engine=%s channel=%s headless=%s",
-        integration_settings.browser_engine,
-        integration_settings.browser_channel or "",
+        "browser_started framework=playwright browser=%s channel=%s headless=%s",
+        browser_name,
+        launch_kwargs.get("channel", ""),
         integration_settings.headless,
     )
     try:

@@ -43,6 +43,8 @@ def _chrome_driver(settings: IntegrationSettings) -> Any:
     if settings.headless:
         options.add_argument("--headless=new")
     options.add_argument("--window-size=1440,1200")
+    if settings.selenium_binary_path:
+        options.binary_location = settings.selenium_binary_path
     return webdriver.Chrome(options=options)
 
 
@@ -62,16 +64,16 @@ def _firefox_driver(settings: IntegrationSettings) -> Any:
 
 
 def _build_selenium_driver(settings: IntegrationSettings) -> Any:
-    engine = (settings.browser_engine or "chromium").strip().lower()
+    browser = (settings.selenium_browser or "chrome").strip().lower()
     factories = {
-        "chromium": _chrome_driver,
         "chrome": _chrome_driver,
+        "chromium": _chrome_driver,
         "edge": _edge_driver,
         "msedge": _edge_driver,
         "firefox": _firefox_driver,
     }
-    order = [engine] if engine in factories else []
-    for fallback in ("chromium", "edge", "firefox"):
+    order = [browser] if browser in factories else []
+    for fallback in ("chrome", "edge", "firefox"):
         if fallback not in order:
             order.append(fallback)
 
@@ -94,9 +96,10 @@ def selenium_driver(
     driver.set_page_load_timeout(20)
     driver.implicitly_wait(2)
     integration_logger.info(
-        "selenium_started engine=%s headless=%s",
-        integration_settings.browser_engine,
+        "browser_started framework=selenium browser=%s headless=%s binary=%s",
+        integration_settings.selenium_browser,
         integration_settings.headless,
+        integration_settings.selenium_binary_path or "",
     )
     try:
         yield driver

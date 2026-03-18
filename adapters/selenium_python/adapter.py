@@ -206,16 +206,48 @@ def _element_name(element: Any) -> str:
         aria_label = get_attr("aria-label") or ""
         if aria_label:
             return str(aria_label)
+    driver = getattr(element, "parent", None)
+    execute_script = getattr(driver, "execute_script", None)
+    if callable(execute_script):
+        try:
+            label_text = execute_script(
+                """
+                const el = arguments[0];
+                if (!el) return '';
+                const labels = el.labels ? Array.from(el.labels) : [];
+                const own = (el.innerText || el.textContent || '').trim();
+                const labelText = labels
+                  .map(label => (label.innerText || label.textContent || '').trim())
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim();
+                return labelText || own || '';
+                """,
+                element,
+            )
+            if label_text:
+                return str(label_text)
+        except Exception:
+            pass
     return str(text)
 
 
 def _text_xpath(value: str, exact: bool) -> str:
     literal = _xpath_literal(value)
-    expr = f"normalize-space(.) = {literal}" if exact else (
-        "contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
-        f"{_xpath_literal(value.casefold())})"
-    )
-    return f".//*[{expr}] | .[{expr}]"
+    if exact:
+        expr = (
+            f"normalize-space(.) = {literal} and "
+            f"not(.//*[normalize-space(.) = {literal}])"
+        )
+    else:
+        lowered = _xpath_literal(value.casefold())
+        expr = (
+            "contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+            f"{lowered}) and "
+            "not(.//*[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+            f"{lowered})])"
+        )
+    return f"descendant-or-self::*[{expr}]"
 
 
 def _find_role_elements(roots: list[Any], locator_spec: LocatorSpec) -> list[Any]:
