@@ -220,7 +220,7 @@ class BaseHealerFacade:
             return None
 
         try:
-            from xpath_healer.rag import OpenAIEmbedder, OpenAILLM, PgVectorRetriever, RagAssist
+            from xpath_healer.rag import ChromaRetriever, OpenAIEmbedder, OpenAILLM, RagAssist
 
             embed_model = (os.getenv("XH_OPENAI_EMBED_MODEL") or "text-embedding-3-small").strip()
             embed_dim_raw = (os.getenv("XH_OPENAI_EMBED_DIM") or "1536").strip()
@@ -229,7 +229,7 @@ class BaseHealerFacade:
             prompt_top_n_raw = (os.getenv("XH_RAG_PROMPT_TOP_N") or "3").strip()
             prompt_top_n = max(1, int(prompt_top_n_raw or "3"))
             embedder = OpenAIEmbedder(api_key=api_key, model=embed_model, dimensions=embed_dim)
-            retriever = PgVectorRetriever(dsn=pg_dsn)
+            retriever = ChromaRetriever()
             llm = OpenAILLM(api_key=api_key, model=chat_model)
             return RagAssist(
                 embedder=embedder,

@@ -2,6 +2,7 @@
 
 from xpath_healer.rag.embedder import Embedder
 from xpath_healer.rag.llm import LLM
+from xpath_healer.rag.chroma_retriever import ChromaRetriever
 from xpath_healer.rag.openai_embedder import OpenAIEmbedder
 from xpath_healer.rag.openai_llm import OpenAILLM
 from xpath_healer.rag.pgvector_retriever import PgVectorRetriever
@@ -15,5 +16,6 @@ __all__ = [
     "RagAssist",
     "OpenAIEmbedder",
     "OpenAILLM",
+    "ChromaRetriever",
     "PgVectorRetriever",
 ]

@@ -78,35 +78,89 @@ async def _fetch_stats(
 
     conn = await asyncpg.connect(dsn=dsn, command_timeout=30)  # type: ignore[union-attr]
     try:
+        has_signature_embedding = bool(
+            await conn.fetchval(
+                """
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_name='elements'
+                    AND column_name='signature_embedding'
+                )
+                """
+            )
+        )
+        has_rag_embedding = bool(
+            await conn.fetchval(
+                """
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM information_schema.columns
+                  WHERE table_name='rag_documents'
+                    AND column_name='embedding'
+                )
+                """
+            )
+        )
+
         embedding_row = await conn.fetchrow(
-            """
-            SELECT
-              COUNT(*) AS elements_total,
-              COUNT(*) FILTER (WHERE signature IS NOT NULL) AS elements_with_signature,
-              COUNT(*) FILTER (WHERE signature_embedding IS NOT NULL) AS elements_with_signature_embedding
-            FROM elements
-            WHERE ($1 = '' OR app_id = $1)
-              AND ($2 = '' OR page_name = $2)
-            """,
+            (
+                """
+                SELECT
+                  COUNT(*) AS elements_total,
+                  COUNT(*) FILTER (WHERE signature IS NOT NULL) AS elements_with_signature,
+                  COUNT(*) FILTER (WHERE signature_embedding IS NOT NULL) AS elements_with_signature_embedding
+                FROM elements
+                WHERE ($1 = '' OR app_id = $1)
+                  AND ($2 = '' OR page_name = $2)
+                """
+                if has_signature_embedding
+                else """
+                SELECT
+                  COUNT(*) AS elements_total,
+                  COUNT(*) FILTER (WHERE signature IS NOT NULL) AS elements_with_signature,
+                  0 AS elements_with_signature_embedding
+                FROM elements
+                WHERE ($1 = '' OR app_id = $1)
+                  AND ($2 = '' OR page_name = $2)
+                """
+            ),
             app_id,
             page_name,
         )
 
         rag_doc_row = await conn.fetchrow(
-            """
-            SELECT
-              COUNT(*) AS rag_documents_total,
-              COUNT(*) FILTER (WHERE embedding IS NOT NULL) AS rag_documents_with_embedding,
-              COUNT(*) FILTER (WHERE source = 'element_meta') AS rag_documents_element_meta_total,
-              COUNT(*) FILTER (WHERE source = 'element_meta' AND embedding IS NOT NULL) AS rag_documents_element_meta_with_embedding,
-              AVG(char_length(chunk_text)) AS avg_chunk_chars,
-              MAX(char_length(chunk_text)) AS max_chunk_chars,
-              AVG(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS avg_prompt_compact_chars,
-              MAX(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS max_prompt_compact_chars
-            FROM rag_documents
-            WHERE ($1 = '' OR app_id = $1)
-              AND ($2 = '' OR page_name = $2)
-            """,
+            (
+                """
+                SELECT
+                  COUNT(*) AS rag_documents_total,
+                  COUNT(*) FILTER (WHERE embedding IS NOT NULL) AS rag_documents_with_embedding,
+                  COUNT(*) FILTER (WHERE source = 'element_meta') AS rag_documents_element_meta_total,
+                  COUNT(*) FILTER (WHERE source = 'element_meta' AND embedding IS NOT NULL) AS rag_documents_element_meta_with_embedding,
+                  AVG(char_length(chunk_text)) AS avg_chunk_chars,
+                  MAX(char_length(chunk_text)) AS max_chunk_chars,
+                  AVG(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS avg_prompt_compact_chars,
+                  MAX(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS max_prompt_compact_chars
+                FROM rag_documents
+                WHERE ($1 = '' OR app_id = $1)
+                  AND ($2 = '' OR page_name = $2)
+                """
+                if has_rag_embedding
+                else """
+                SELECT
+                  COUNT(*) AS rag_documents_total,
+                  0 AS rag_documents_with_embedding,
+                  COUNT(*) FILTER (WHERE source = 'element_meta') AS rag_documents_element_meta_total,
+                  0 AS rag_documents_element_meta_with_embedding,
+                  AVG(char_length(chunk_text)) AS avg_chunk_chars,
+                  MAX(char_length(chunk_text)) AS max_chunk_chars,
+                  AVG(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS avg_prompt_compact_chars,
+                  MAX(char_length(COALESCE(metadata->>'prompt_compact_text',''))) FILTER (WHERE metadata ? 'prompt_compact_text') AS max_prompt_compact_chars
+                FROM rag_documents
+                WHERE ($1 = '' OR app_id = $1)
+                  AND ($2 = '' OR page_name = $2)
+                """
+            ),
             app_id,
             page_name,
         )
