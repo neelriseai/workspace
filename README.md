@@ -110,3 +110,24 @@ Notes:
 - Fingerprint matching is on by default and runs before signature/vector/LLM fallback.
 - When `XH_RAG_ENABLED=true`, facade auto-wires OpenAI + ChromaDB adapters only if both `OPENAI_API_KEY` and `XH_PG_DSN` are valid.
 - Retry is lightweight: it only triggers for configured transient reason codes.
+
+## Failure Diagnostics (2026-03-22)
+
+Root cause analysis is documented in:
+- `docs/failure_root_cause_2026_03_22.md`
+
+Current test behavior summary:
+- TC4 (`@negative`) fails intentionally by test design (`pytest.fail(...)`) to verify raw broken xpath reporting path.
+- Under `XH_STAGE_PROFILE=llm_only` with a fresh/wiped DB, TC2 may fail because LLM candidates do not pass validator grounding (`no_match` / `not_visible`) without deterministic fallback layers.
+
+## Solution Design v3
+
+Master design:
+- `docs/solution_v3/00_XPath_Healer_Master_Design_v3.md`
+
+Layer design documents:
+- `docs/solution_v3/01_Core_Layer_Design_v3.md`
+- `docs/solution_v3/02_DB_Layer_Design_v3.md`
+- `docs/solution_v3/03_Service_Layer_Design_v3.md`
+- `docs/solution_v3/04_Model_RAG_Layer_Design_v3.md`
+- `docs/solution_v3/05_Testing_Automation_Layer_Design_v3.md`
