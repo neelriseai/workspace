@@ -17,6 +17,11 @@ try:
 except Exception:  # pragma: no cover - dependency may be optional at runtime
     asyncpg = None  # type: ignore[assignment]
 
+try:
+    import chromadb  # type: ignore
+except Exception:  # pragma: no cover - dependency may be optional at runtime
+    chromadb = None  # type: ignore[assignment]
+
 
 LOGGER = logging.getLogger("xpath_healer.store.pg_repository")
 
@@ -39,6 +44,13 @@ class PostgresMetadataRepository(MetadataRepository):
         self._embedding_dim = self._safe_env_int("XH_OPENAI_EMBED_DIM", default=1536, minimum=8)
         self._embedding_writes_enabled = self._safe_env_bool("XH_EMBEDDING_WRITE_ENABLED", default=True)
         self._rag_doc_max_chars = self._safe_env_int("XH_RAG_DOC_MAX_CHARS", default=1400, minimum=300)
+        self._chroma_path = (os.getenv("XH_CHROMA_PATH") or "artifacts/chroma").strip()
+        self._chroma_rag_collection_name = (os.getenv("XH_CHROMA_RAG_COLLECTION") or "xh_rag_documents").strip()
+        self._chroma_elements_collection_name = (os.getenv("XH_CHROMA_ELEMENTS_COLLECTION") or "xh_elements").strip()
+        self._chroma_client: Any = None
+        self._chroma_rag_collection: Any = None
+        self._chroma_elements_collection: Any = None
+        self._chroma_unavailable_logged = False
 
     async def connect(self) -> None:
         if self._pool is not None:
@@ -51,14 +63,17 @@ class PostgresMetadataRepository(MetadataRepository):
             max_size=self.pool_max_size,
             command_timeout=30,
         )
+        self._ensure_chroma_collections()
         if self.auto_init_schema:
             await self.init_schema()
 
     async def close(self) -> None:
-        if self._pool is None:
-            return
-        await self._pool.close()
-        self._pool = None
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
+        self._chroma_client = None
+        self._chroma_rag_collection = None
+        self._chroma_elements_collection = None
 
     async def init_schema(self) -> None:
         pool = await self._ensure_pool()
@@ -116,7 +131,6 @@ class PostgresMetadataRepository(MetadataRepository):
         payload = meta.to_dict()
         rag_chunk_text = self._build_embedding_text(meta)
         embedding = await self._embed_text(rag_chunk_text)
-        embedding_literal = self._vector_literal(embedding) if embedding else None
 
         async with pool.acquire() as conn:
             stored_id = await conn.fetchval(
@@ -131,7 +145,6 @@ class PostgresMetadataRepository(MetadataRepository):
                   robust_locator,
                   strategy_id,
                   signature,
-                  signature_embedding,
                   hints,
                   locator_variants,
                   quality_metrics,
@@ -149,13 +162,12 @@ class PostgresMetadataRepository(MetadataRepository):
                   $7::jsonb,
                   $8,
                   $9::jsonb,
-                  $10::vector,
+                  $10::jsonb,
                   $11::jsonb,
                   $12::jsonb,
-                  $13::jsonb,
-                  $14::timestamptz,
-                  $15,
-                  $16
+                  $13::timestamptz,
+                  $14,
+                  $15
                 )
                 ON CONFLICT (app_id, page_name, element_name)
                 DO UPDATE SET
@@ -164,7 +176,6 @@ class PostgresMetadataRepository(MetadataRepository):
                   robust_locator = EXCLUDED.robust_locator,
                   strategy_id = EXCLUDED.strategy_id,
                   signature = EXCLUDED.signature,
-                  signature_embedding = EXCLUDED.signature_embedding,
                   hints = EXCLUDED.hints,
                   locator_variants = EXCLUDED.locator_variants,
                   quality_metrics = EXCLUDED.quality_metrics,
@@ -182,7 +193,6 @@ class PostgresMetadataRepository(MetadataRepository):
                 self._json_or_none(payload.get("robust_locator")),
                 meta.strategy_id,
                 self._json_or_none(payload.get("signature")),
-                embedding_literal,
                 self._json_or_none(payload.get("hints")),
                 self._json_or_empty(payload.get("locator_variants")),
                 self._json_or_empty(payload.get("quality_metrics")),
@@ -506,47 +516,37 @@ class PostgresMetadataRepository(MetadataRepository):
         page_name: str = "",
         limit: int = 25,
     ) -> list[dict[str, Any]]:
-        pool = await self._ensure_pool()
-        vector_text = self._vector_literal(query_embedding)
         top_n = max(1, int(limit))
-        async with pool.acquire() as conn:
-            try:
-                rows = await conn.fetch(
-                    """
-                    SELECT
-                      id,
-                      app_id,
-                      page_name,
-                      element_name,
-                      source,
-                      chunk_text,
-                      metadata,
-                      1 - (embedding <=> $1::vector) AS similarity
-                    FROM rag_documents
-                    WHERE ($2 = '' OR app_id=$2)
-                      AND ($3 = '' OR page_name=$3)
-                    ORDER BY embedding <=> $1::vector
-                    LIMIT $4
-                    """,
-                    vector_text,
-                    app_id or "",
-                    page_name or "",
-                    top_n,
-                )
-            except Exception:
-                return []
-
+        if not query_embedding:
+            return []
+        rag_collection = self._get_chroma_rag_collection()
+        if rag_collection is None:
+            return []
+        filters = self._chroma_where(
+            {
+                "app_id": app_id or "",
+                "page_name": page_name or "",
+            }
+        )
+        rows = self._query_chroma_collection(
+            collection=rag_collection,
+            query_embedding=query_embedding,
+            limit=top_n,
+            where=filters,
+        )
         out: list[dict[str, Any]] = []
         for row in rows:
+            raw_metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            payload_metadata = self._decode_json(raw_metadata.get("metadata_json")) or {}
             out.append(
                 {
                     "id": row.get("id"),
-                    "app_id": row.get("app_id"),
-                    "page_name": row.get("page_name"),
-                    "element_name": row.get("element_name"),
-                    "source": row.get("source"),
-                    "chunk_text": row.get("chunk_text"),
-                    "metadata": self._decode_json(row.get("metadata")) or {},
+                    "app_id": raw_metadata.get("app_id"),
+                    "page_name": raw_metadata.get("page_name"),
+                    "element_name": raw_metadata.get("element_name"),
+                    "source": raw_metadata.get("source"),
+                    "chunk_text": row.get("document"),
+                    "metadata": payload_metadata,
                     "similarity": float(row.get("similarity") or 0.0),
                 }
             )
@@ -563,7 +563,6 @@ class PostgresMetadataRepository(MetadataRepository):
         metadata: dict[str, Any] | None = None,
     ) -> None:
         pool = await self._ensure_pool()
-        vector_text = self._vector_literal(embedding) if embedding else None
         async with pool.acquire() as conn:
             await conn.execute(
                 """
@@ -573,18 +572,26 @@ class PostgresMetadataRepository(MetadataRepository):
                   element_name,
                   source,
                   chunk_text,
-                  embedding,
                   metadata
                 )
-                VALUES ($1,$2,$3,$4,$5,$6::vector,$7::jsonb)
+                VALUES ($1,$2,$3,$4,$5,$6::jsonb)
                 """,
                 app_id,
                 page_name,
                 element_name,
                 source,
                 chunk_text,
-                vector_text,
                 self._json_or_empty(metadata or {}),
+            )
+        if embedding:
+            self._add_chroma_rag_document(
+                app_id=app_id,
+                page_name=page_name,
+                source=source,
+                chunk_text=chunk_text,
+                embedding=embedding,
+                element_name=element_name,
+                metadata=metadata or {},
             )
 
     async def _upsert_element_rag_document(
@@ -596,7 +603,6 @@ class PostgresMetadataRepository(MetadataRepository):
     ) -> None:
         if not chunk_text:
             return
-        vector_text = self._vector_literal(embedding) if embedding else None
         metadata = {
             "source": "element_meta",
             "strategy_id": meta.strategy_id,
@@ -626,19 +632,224 @@ class PostgresMetadataRepository(MetadataRepository):
               element_name,
               source,
               chunk_text,
-              embedding,
               metadata
             )
-            VALUES ($1,$2,$3,$4,$5,$6::vector,$7::jsonb)
+            VALUES ($1,$2,$3,$4,$5,$6::jsonb)
             """,
             meta.app_id,
             meta.page_name,
             meta.element_name,
             "element_meta",
             chunk_text,
-            vector_text,
             self._json_or_empty(metadata),
         )
+        self._upsert_chroma_element_meta(meta=meta, chunk_text=chunk_text, embedding=embedding, metadata=metadata)
+
+    def _upsert_chroma_element_meta(
+        self,
+        meta: ElementMeta,
+        chunk_text: str,
+        embedding: list[float] | None,
+        metadata: dict[str, Any],
+    ) -> None:
+        try:
+            rag_collection = self._get_chroma_rag_collection()
+            elements_collection = self._get_chroma_elements_collection()
+            rag_id = self._stable_chroma_id("element_meta", meta.app_id, meta.page_name, meta.element_name)
+            element_id = self._stable_chroma_id("element", meta.app_id, meta.page_name, meta.element_name)
+
+            if rag_collection is not None:
+                if embedding:
+                    rag_metadata = self._chroma_sanitize_metadata(
+                        {
+                            "app_id": meta.app_id,
+                            "page_name": meta.page_name,
+                            "element_name": meta.element_name,
+                            "source": "element_meta",
+                            "field_type": meta.field_type,
+                            "metadata_json": self._json_or_empty(metadata),
+                        }
+                    )
+                    rag_collection.upsert(
+                        ids=[rag_id],
+                        embeddings=[embedding],
+                        documents=[chunk_text],
+                        metadatas=[rag_metadata],
+                    )
+                else:
+                    rag_collection.delete(ids=[rag_id])
+
+            if elements_collection is None:
+                return
+            if embedding:
+                payload = {
+                    "app_id": meta.app_id,
+                    "page_name": meta.page_name,
+                    "element_name": meta.element_name,
+                    "field_type": meta.field_type,
+                    "last_good_locator_json": self._json_or_none(
+                        meta.last_good_locator.to_dict() if meta.last_good_locator else None
+                    )
+                    or "",
+                    "robust_locator_json": self._json_or_none(meta.robust_locator.to_dict() if meta.robust_locator else None)
+                    or "",
+                    "signature_json": self._json_or_none(meta.signature.to_dict() if meta.signature else None) or "",
+                    "quality_metrics_json": self._json_or_empty(dict(meta.quality_metrics or {})),
+                }
+                element_metadata = self._chroma_sanitize_metadata(payload)
+                elements_collection.upsert(
+                    ids=[element_id],
+                    embeddings=[embedding],
+                    documents=[chunk_text],
+                    metadatas=[element_metadata],
+                )
+            else:
+                elements_collection.delete(ids=[element_id])
+        except Exception as exc:
+            LOGGER.warning("Chroma upsert failed for element metadata %s/%s/%s: %s", meta.app_id, meta.page_name, meta.element_name, exc)
+
+    def _add_chroma_rag_document(
+        self,
+        app_id: str,
+        page_name: str,
+        source: str,
+        chunk_text: str,
+        embedding: list[float],
+        element_name: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        try:
+            rag_collection = self._get_chroma_rag_collection()
+            if rag_collection is None:
+                return
+            document_id = str(uuid.uuid4())
+            payload = self._chroma_sanitize_metadata(
+                {
+                    "app_id": app_id,
+                    "page_name": page_name,
+                    "element_name": element_name or "",
+                    "source": source,
+                    "field_type": str((metadata or {}).get("field_type") or ""),
+                    "metadata_json": self._json_or_empty(metadata or {}),
+                }
+            )
+            rag_collection.upsert(
+                ids=[document_id],
+                embeddings=[embedding],
+                documents=[chunk_text],
+                metadatas=[payload],
+            )
+        except Exception as exc:
+            LOGGER.warning("Chroma upsert failed for rag document app=%s page=%s source=%s: %s", app_id, page_name, source, exc)
+
+    def _get_chroma_rag_collection(self) -> Any | None:
+        self._ensure_chroma_collections()
+        return self._chroma_rag_collection
+
+    def _get_chroma_elements_collection(self) -> Any | None:
+        self._ensure_chroma_collections()
+        return self._chroma_elements_collection
+
+    def _ensure_chroma_collections(self) -> bool:
+        if self._chroma_rag_collection is not None and self._chroma_elements_collection is not None:
+            return True
+        if chromadb is None:
+            if not self._chroma_unavailable_logged:
+                LOGGER.warning("ChromaDB is not installed. Install with: python -m pip install chromadb")
+                self._chroma_unavailable_logged = True
+            return False
+        try:
+            os.makedirs(self._chroma_path, exist_ok=True)
+            if self._chroma_client is None:
+                self._chroma_client = chromadb.PersistentClient(path=self._chroma_path)  # type: ignore[union-attr]
+            self._chroma_rag_collection = self._chroma_client.get_or_create_collection(
+                name=self._chroma_rag_collection_name,
+                metadata={"hnsw:space": "cosine"},
+            )
+            self._chroma_elements_collection = self._chroma_client.get_or_create_collection(
+                name=self._chroma_elements_collection_name,
+                metadata={"hnsw:space": "cosine"},
+            )
+            return True
+        except Exception as exc:
+            if not self._chroma_unavailable_logged:
+                LOGGER.warning("ChromaDB init failed: %s", exc)
+                self._chroma_unavailable_logged = True
+            self._chroma_rag_collection = None
+            self._chroma_elements_collection = None
+            return False
+
+    def _query_chroma_collection(
+        self,
+        collection: Any,
+        query_embedding: list[float],
+        limit: int,
+        where: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        try:
+            query_kwargs: dict[str, Any] = {
+                "query_embeddings": [query_embedding],
+                "n_results": max(1, int(limit)),
+                "include": ["metadatas", "documents", "distances"],
+            }
+            if where:
+                query_kwargs["where"] = where
+            result = collection.query(**query_kwargs)
+        except Exception:
+            return []
+
+        ids = (result or {}).get("ids") or [[]]
+        metadatas = (result or {}).get("metadatas") or [[]]
+        documents = (result or {}).get("documents") or [[]]
+        distances = (result or {}).get("distances") or [[]]
+        row_ids = ids[0] if ids else []
+        row_metadatas = metadatas[0] if metadatas else []
+        row_documents = documents[0] if documents else []
+        row_distances = distances[0] if distances else []
+
+        out: list[dict[str, Any]] = []
+        for idx, item_id in enumerate(row_ids):
+            distance = float(row_distances[idx]) if idx < len(row_distances) and row_distances[idx] is not None else 1.0
+            similarity = max(0.0, 1.0 - distance)
+            out.append(
+                {
+                    "id": item_id,
+                    "metadata": row_metadatas[idx] if idx < len(row_metadatas) else {},
+                    "document": row_documents[idx] if idx < len(row_documents) else "",
+                    "similarity": similarity,
+                }
+            )
+        return out
+
+    @staticmethod
+    def _chroma_where(filters: dict[str, str]) -> dict[str, Any] | None:
+        clauses = [{key: value} for key, value in filters.items() if value]
+        if not clauses:
+            return None
+        if len(clauses) == 1:
+            return clauses[0]
+        return {"$and": clauses}
+
+    @staticmethod
+    def _stable_chroma_id(prefix: str, app_id: str, page_name: str, element_name: str) -> str:
+        base = f"{prefix}::{app_id}::{page_name}::{element_name}"
+        return base.replace(" ", "_")
+
+    @staticmethod
+    def _chroma_sanitize_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+        sanitized: dict[str, Any] = {}
+        for key, value in payload.items():
+            if isinstance(value, bool):
+                sanitized[key] = value
+                continue
+            if isinstance(value, int):
+                sanitized[key] = value
+                continue
+            if isinstance(value, float):
+                sanitized[key] = float(value)
+                continue
+            sanitized[key] = str(value or "")
+        return sanitized
 
     def _build_embedding_text(self, meta: ElementMeta) -> str:
         parts: list[str] = [
@@ -821,7 +1032,6 @@ class PostgresMetadataRepository(MetadataRepository):
     @staticmethod
     def schema_sql() -> str:
         return """
-        CREATE EXTENSION IF NOT EXISTS vector;
         CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
         CREATE TABLE IF NOT EXISTS page_index (
@@ -869,7 +1079,6 @@ class PostgresMetadataRepository(MetadataRepository):
           robust_locator jsonb,
           strategy_id text,
           signature jsonb,
-          signature_embedding vector(1536),
           hints jsonb,
           locator_variants jsonb,
           quality_metrics jsonb,
@@ -945,7 +1154,6 @@ class PostgresMetadataRepository(MetadataRepository):
           element_name text,
           source text NOT NULL,
           chunk_text text NOT NULL,
-          embedding vector(1536),
           metadata jsonb,
           created_at timestamptz NOT NULL DEFAULT now()
         );
@@ -962,9 +1170,6 @@ class PostgresMetadataRepository(MetadataRepository):
         CREATE INDEX IF NOT EXISTS idx_elements_page_field
           ON elements (app_id, page_name, field_type, success_count DESC, last_seen DESC);
 
-        CREATE INDEX IF NOT EXISTS idx_elements_signature_embedding
-          ON elements USING ivfflat (signature_embedding vector_cosine_ops) WITH (lists = 100);
-
         CREATE INDEX IF NOT EXISTS idx_locator_variants_element_key
           ON locator_variants (element_id, variant_key);
 
@@ -976,9 +1181,6 @@ class PostgresMetadataRepository(MetadataRepository):
 
         CREATE INDEX IF NOT EXISTS idx_rag_documents_scope
           ON rag_documents (app_id, page_name, element_name, created_at DESC);
-
-        CREATE INDEX IF NOT EXISTS idx_rag_documents_embedding
-          ON rag_documents USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
         """
 
     @staticmethod
@@ -1004,11 +1206,6 @@ class PostgresMetadataRepository(MetadataRepository):
             return str(uuid.UUID(text))
         except Exception:
             return None
-
-    @staticmethod
-    def _vector_literal(embedding: list[float]) -> str:
-        values = [f"{float(value):.8f}" for value in embedding]
-        return "[" + ",".join(values) + "]"
 
     @staticmethod
     def _decode_json(value: Any) -> Any:

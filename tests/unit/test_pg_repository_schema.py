@@ -13,8 +13,9 @@ def test_schema_sql_contains_required_tables_and_indexes() -> None:
     assert "CREATE TABLE IF NOT EXISTS rag_documents" in sql
     assert "idx_page_index_lookup" in sql
     assert "idx_indexed_elements_page" in sql
-    assert "idx_elements_signature_embedding" in sql
-    assert "idx_rag_documents_embedding" in sql
+    assert "idx_rag_documents_scope" in sql
+    assert "signature_embedding" not in sql
+    assert "embedding vector(" not in sql
 
 
 def test_safe_uuid_text_rejects_invalid_values() -> None:

@@ -64,6 +64,9 @@ Create an `.env` (or set shell env vars) with placeholders:
 ```bash
 OPENAI_API_KEY=<your-openai-key-placeholder>
 XH_PG_DSN=postgresql://<user>:<password>@<host>:5432/<db>
+XH_CHROMA_PATH=artifacts/chroma
+XH_CHROMA_RAG_COLLECTION=xh_rag_documents
+XH_CHROMA_ELEMENTS_COLLECTION=xh_elements
 XH_ADAPTER=playwright_python
 XH_PLAYWRIGHT_BROWSER=chromium
 XH_PLAYWRIGHT_CHANNEL=
@@ -105,5 +108,5 @@ Notes:
 - If `XH_PG_DSN` is set, facade uses dual metadata mode:
   Postgres primary read/write + JSON fallback/backup under `XH_METADATA_JSON_DIR`.
 - Fingerprint matching is on by default and runs before signature/vector/LLM fallback.
-- When `XH_RAG_ENABLED=true`, facade auto-wires OpenAI + pgvector adapters only if both `OPENAI_API_KEY` and `XH_PG_DSN` are valid.
+- When `XH_RAG_ENABLED=true`, facade auto-wires OpenAI + ChromaDB adapters only if both `OPENAI_API_KEY` and `XH_PG_DSN` are valid.
 - Retry is lightweight: it only triggers for configured transient reason codes.
